@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>صقر الصحراء</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--sand:#e9b65c;--bg:#0b0e11;--pan:#12161a;--line:rgba(255,255,255,.1);--ok:#63e08a;--bad:#ff5b45;--unk:#f2c14e;--mut:rgba(255,255,255,.55)}
+*{box-sizing:border-box;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;font-family:Tajawal,system-ui,"Segoe UI",sans-serif;color:#fff;font-size:14px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+kbd{font:700 10px system-ui;background:rgba(255,255,255,.14);border-radius:4px;padding:1px 5px;direction:ltr}
+.hid{display:none!important}.mut{color:var(--mut);margin:8px 2px;font-size:13px}
+#app{display:grid;grid-template-columns:minmax(0,1fr) 372px;height:100%}
+#view{position:relative;overflow:hidden;min-width:0}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
+#load{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:9;font-weight:700;color:var(--sand)}
+
+/* شريط علوي */
+#top{position:absolute;top:10px;right:12px;left:12px;display:flex;align-items:center;gap:10px;pointer-events:none}
+#top>*{pointer-events:auto}
+.pill{background:rgba(11,14,17,.72);border:1px solid var(--line);border-radius:10px;padding:6px 11px;font-weight:700;font-size:12.5px;backdrop-filter:blur(8px)}
+.pill small{color:var(--mut);font-weight:500;margin-inline-end:6px}
+#hpw{display:flex;align-items:center;gap:8px;min-width:210px}
+#hpb{flex:1;height:7px;border-radius:4px;background:rgba(255,255,255,.14);overflow:hidden}#hp{display:block;height:100%;background:var(--ok);transform-origin:right;transition:transform .3s}
+#top .sp{flex:1}
+#top button.pill:hover{border-color:var(--sand)}#nvb.on,#aiff.on{color:var(--ok);border-color:var(--ok)}
+#banner{position:absolute;top:64px;right:0;left:0;text-align:center;opacity:0;transform:translateY(-8px);transition:.25s;text-shadow:0 2px 14px rgba(0,0,0,.8);pointer-events:none}
+#banner.show{opacity:1;transform:none}#bt{font-weight:900;font-size:30px}#bs{font-size:14px;opacity:.9}
+#banner.warn #bt{color:var(--bad)}#banner.ok #bt{color:var(--ok)}
+/* علامات الأهداف في المشهد */
+#marks{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.mk{position:absolute;top:0;left:0;width:0;height:0;pointer-events:auto;cursor:pointer;--c:var(--unk)}
+.mk.hostile{--c:var(--bad)}.mk.friend{--c:var(--ok)}
+.mk::before{content:"";position:absolute;left:-11px;top:-11px;width:22px;height:22px;border:1.5px solid var(--c);border-radius:3px}
+.mk.hostile::before{transform:rotate(45deg)}.mk.friend::before{border-radius:50%}
+.mk b{position:absolute;top:14px;left:-20px;width:40px;text-align:center;font:700 10px system-ui;color:var(--c);text-shadow:0 1px 3px #000}
+.mk.sel::after{content:"";position:absolute;left:-17px;top:-17px;width:34px;height:34px;border:1px solid #fff;border-radius:2px}
+/* خانات الصواريخ المطلقة */
+#chipw{position:absolute;right:12px;bottom:12px;left:276px;display:flex;align-items:flex-end;gap:10px;pointer-events:none}
+#chips{display:flex;gap:8px;flex-wrap:wrap;flex:1}
+.chip{pointer-events:auto;background:rgba(11,14,17,.78);border:1px solid #9fe8ff;border-radius:10px;padding:7px 12px;text-align:right;backdrop-filter:blur(8px)}
+.chip b{display:block;font-size:14px}.chip i{font-style:normal;font-size:11px;color:#9fe8ff}
+.chip.on{background:#9fe8ff;color:#06222c}.chip.on i{color:#06222c}.chip:hover{transform:translateY(-2px)}
+#backb{pointer-events:auto;background:var(--sand);color:#1a1307;font-weight:900;border-radius:10px;padding:10px 16px}
+#hint{position:absolute;right:12px;top:52px;font-size:11px;color:var(--mut);text-shadow:0 1px 3px #000;direction:rtl;pointer-events:none}
+
+/* اللوحة الجانبية */
+#side{background:var(--pan);border-inline-start:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow-y:auto;scrollbar-width:thin}
+#rbox{position:absolute;left:12px;bottom:12px;width:250px;background:rgba(6,17,11,.82);border:1px solid rgba(99,224,138,.3);border-radius:14px;padding:6px;backdrop-filter:blur(6px);z-index:2;transition:width .2s}
+#rbox.big{width:400px}#radar{width:100%;aspect-ratio:1;border-radius:50%;display:block;cursor:crosshair}
+.rtop{display:flex;justify-content:space-between;align-items:center;padding:0 4px 4px;font-weight:900;font-size:12px;color:var(--ok)}.rtop button{color:var(--ok);font-size:15px;padding:0 4px}
+#aiff{font-size:11px;padding:3px 9px}
+#legend{display:flex;gap:9px;justify-content:center;font-size:10px;color:var(--mut);padding:4px 0 0;flex-wrap:wrap}
+#legend i{display:inline-block;width:9px;height:9px;border:1.5px solid;margin-inline-end:5px;vertical-align:-1px}
+.sec{padding:8px 10px;border-top:1px solid var(--line)}.sec h4{margin:0 0 6px;font-size:11px;color:var(--mut);font-weight:500}
+.dh{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}.dh b{font-size:19px;font-weight:900}.dh span{font-weight:700}.dh i{font-style:normal;color:var(--mut);margin-inline-start:auto;font-size:13px}
+.dh.unknown span{color:var(--unk)}.dh.hostile span{color:var(--bad)}.dh.friend span{color:var(--ok)}
+.dg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}.dg div{background:rgba(255,255,255,.05);border-radius:8px;padding:5px 6px}.dg small{display:block;font-size:10px;color:var(--mut)}.dg b{font-size:12.5px}
+.iff,.cl{display:flex;gap:6px;align-items:center;margin-bottom:6px}.iff span{font-size:12px;color:var(--mut)}
+.iff button,.cl button{background:rgba(255,255,255,.09);border-radius:8px;padding:7px 10px;font-weight:700;font-size:12.5px}.cl button{flex:1}
+#biff{background:rgba(99,224,138,.16);color:var(--ok)}#bh{background:rgba(255,91,69,.14);color:var(--bad)}#bf{background:rgba(99,224,138,.12);color:var(--ok)}
+button:disabled{opacity:.35;cursor:default}
+#systems{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.sy{position:relative;background:rgba(255,255,255,.06);border:1px solid transparent;border-radius:9px;padding:16px 2px 5px;text-align:center;opacity:.6}
+.sy kbd{position:absolute;top:3px;right:4px}.sy b{display:block;font-size:12.5px;font-weight:900;white-space:nowrap}.sy i{display:block;font-style:normal;font-size:9.5px;color:var(--mut)}
+.sy u{display:block;text-decoration:none;font-size:9.5px;color:var(--mut);min-height:13px}.sy em{display:block;font-style:normal;font-weight:900;font-size:13px;color:var(--sand)}
+.sy.ok{opacity:1;border-color:var(--sand);background:rgba(233,182,92,.14)}.sy.dead{opacity:.35}.sy.dead em{color:var(--bad)}
+.aimt{font-size:12.5px;margin:-2px 0 8px;color:#ffb3a8}.aimt b{color:var(--bad)}.dh em{font-style:normal;font-size:11px;color:var(--sand)}
+.iff span{flex:1}#assets{display:flex;flex-direction:column;gap:3px}.as{display:flex;gap:10px;align-items:center;font-size:12px;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.04)}.as b{width:84px}.as span{color:var(--mut)}.as .g{color:var(--ok)}.as .r{color:var(--bad)}.as.off{background:rgba(255,91,69,.1)}.as .y{color:var(--unk)}.as{flex-wrap:wrap;row-gap:0}
+.hrow{display:flex;align-items:center;justify-content:space-between}#dbl{font-size:11px;padding:3px 9px;color:var(--mut)}#dbl.on{color:var(--sand);border-color:var(--sand)}
+#tl{display:flex;flex-direction:column;gap:3px;max-height:150px;overflow-y:auto;scrollbar-width:thin}
+.tr{display:grid;grid-template-columns:38px 62px 1fr auto;gap:6px;align-items:center;text-align:right;padding:5px 8px;border-radius:7px;background:rgba(255,255,255,.04);font-size:12.5px}
+.tr.on{outline:1px solid #fff}.tr span{font-weight:700}.tr.unknown span{color:var(--unk)}.tr.hostile span{color:var(--bad)}.tr.friend span{color:var(--ok)}.tr i{font-style:normal;color:var(--mut)}.tr em{font-style:normal;font-variant-numeric:tabular-nums}
+#log{font-size:11.5px;color:var(--mut);display:flex;flex-direction:column;gap:2px;min-height:78px}#log .bad{color:var(--bad)}#log .ok{color:var(--ok)}#log .warn{color:var(--unk)}
+#foot{margin-top:auto;display:flex;justify-content:space-between;padding:6px 10px;font-size:11px;color:var(--mut);border-top:1px solid var(--line)}
+
+/* قوائم */
+.ov{position:fixed;inset:0;display:grid;place-items:center;background:rgba(8,10,12,.66);backdrop-filter:blur(5px);z-index:5;padding:20px}
+.card{width:100%;max-width:620px;background:#12161a;border:1px solid var(--line);border-radius:18px;padding:24px}
+.card h1{margin:0;font-size:40px;font-weight:900}.card h1 span{color:var(--sand)}.card>p{margin:4px 0 16px;color:var(--mut)}
+.ms{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.ms button{background:rgba(255,255,255,.07);border-radius:12px;padding:14px 10px;font-weight:900;font-size:16px}.ms button i{display:block;font-style:normal;font-weight:500;font-size:11.5px;color:var(--mut);margin-top:3px}
+.ms button:first-child{background:var(--sand);color:#1a1307}.ms button:first-child i{color:#4a3a14}.ms button:hover{outline:1px solid var(--sand)}
+.how{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;margin:0 0 14px;padding:0;list-style:none;font-size:13px;line-height:1.6}
+.how b{color:var(--sand)}
+.row{display:flex;align-items:center;gap:10px;margin-top:8px}.row label{width:86px;font-size:12px;color:var(--mut)}
+.seg{display:flex;gap:6px;flex:1}.seg button{flex:1;padding:7px 4px;border-radius:8px;background:rgba(255,255,255,.07);font-weight:700;font-size:12.5px;border:1px solid transparent}.seg button.on{border-color:var(--sand);color:var(--sand)}
+.fine{margin:14px 0 0;font-size:11px;color:var(--mut);display:flex;justify-content:space-between;align-items:center}
+#result .card{max-width:420px;text-align:center}#result h3{margin:0 0 4px;font-size:32px;font-weight:900}#result.win h3{color:var(--ok)}#result.lose h3{color:var(--bad)}
+#rd{color:var(--mut);font-size:13px}.btns{display:flex;gap:8px;margin-top:14px}.btns button{flex:1;padding:12px;border-radius:11px;background:rgba(255,255,255,.09);font-weight:700}#rn{background:var(--sand);color:#1a1307}
+.card.wide{max-width:980px;max-height:92vh;overflow-y:auto}.lh{display:flex;align-items:baseline;gap:12px}.lh h2{margin:0;font-size:26px;font-weight:900}#lcount{font-weight:900;color:var(--sand);font-size:18px;transition:color .2s}#lcount.bad{color:var(--bad)}
+.seg.wrap{flex-wrap:wrap;margin-bottom:6px}.seg.wrap button{flex:0 0 auto;padding:7px 12px}
+#lgrid h5{margin:12px 0 6px;font-size:12px;color:var(--mut);font-weight:700}.lrow{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:7px}
+.lc{text-align:right;background:rgba(255,255,255,.06);border:1px solid transparent;border-radius:11px;padding:9px 10px;display:flex;flex-direction:column;gap:2px}
+.lc b{font-size:15px;font-weight:900}.lc i{font-style:normal;font-size:11.5px;color:var(--mut)}.lc small{font-size:11px;color:var(--mut)}.lc s{text-decoration:none;font-size:11px;color:#bfe9c9}
+.lc .sa{font-style:normal;font-size:10.5px;color:#0b2a17;background:var(--ok);border-radius:5px;padding:1px 6px;align-self:flex-start}
+.lc.on{border-color:var(--sand);background:rgba(233,182,92,.15)}.lc:hover{border-color:rgba(233,182,92,.5)}
+.btns .pri{background:var(--sand);color:#1a1307}.btns button:disabled{opacity:.4}
+.dwrap{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:14px;margin-top:8px}#dmap{width:100%;max-width:560px;aspect-ratio:1;border-radius:12px;cursor:crosshair;display:block}
+#dlist{display:flex;flex-direction:column;gap:6px}#dlist button{display:flex;align-items:center;gap:8px;text-align:right;background:rgba(255,255,255,.06);border:1px solid transparent;border-radius:9px;padding:9px 10px}
+#dlist button i{width:12px;height:12px;border-radius:50%;flex:none}#dlist button span{margin-inline-start:auto;font-size:11px;color:var(--mut)}#dlist button.on{border-color:#fff}
+#side.atk .dsec{display:none}#side:not(.atk) #atk{display:none}
+.seg.modes{margin-bottom:10px}.seg.modes button{padding:10px;font-size:15px;font-weight:900}.seg.modes button.on{background:var(--sand);color:#1a1307}
+.goals{display:flex;flex-direction:column;gap:3px;font-weight:700;font-size:13px}.goals span{color:var(--bad)}.goals .g{color:var(--ok)}
+.stp{display:flex;align-items:center;gap:7px;padding:4px 0}.stp span{flex:1}.stp span b{display:block;font-size:13.5px}.stp small{font-size:10.5px;color:var(--mut)}.stp em{font-style:normal;font-size:11px;color:var(--sand)}
+.stp button{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.1);font-weight:900;font-size:17px}.stp u{text-decoration:none;font-weight:900;font-size:16px;width:22px;text-align:center}
+#atk .btns{margin-top:8px}#atk .btns button{padding:9px}#atk .seg button{font-size:11.5px}
+#atl{display:flex;flex-direction:column;gap:3px;max-height:158px;overflow-y:auto;scrollbar-width:thin}#atl .tr{grid-template-columns:1fr auto 22px}#atl .tr i{color:var(--sand);font-size:11px}
+.aslist{display:flex;flex-direction:column;gap:3px}
+.mk.tg{--c:var(--sand)}.mk.tg.rad{--c:#9fe8ff}.mk.tg.goal{--c:var(--bad)}.mk.tg::before{left:-7px;top:-7px;width:14px;height:14px;transform:rotate(45deg)}
+.mk.tg b{display:none;left:-70px;width:140px;top:12px;font-size:11px}.mk.tg.goal b,.mk.tg.sel b,.mk.tg.pl b{display:block}.mk.tg.pl::before{background:var(--c)}.mk.tg.sel::after{left:-13px;top:-13px;width:26px;height:26px}
+#side.atk~* .chip,#view:has(~#side.atk) .chip{padding:4px 9px}#view:has(~#side.atk) .chip b{font-size:12px}#view:has(~#side.atk) #chipw{left:12px}
+@media (max-width:860px){#app{grid-template-columns:1fr;grid-template-rows:46vh 1fr}#side{border:0;border-top:1px solid var(--line)}#rw{max-width:300px;margin:0 auto}.ms,.how{grid-template-columns:1fr}}
+
+/* ===== نسخة الجوال ===== */
+html,body{overscroll-behavior:none;touch-action:manipulation}
+#app{grid-template-columns:1fr!important;grid-template-rows:minmax(0,1fr) 44vh!important;height:100dvh}
+#view{padding-top:env(safe-area-inset-top)}
+#side{border:0!important;border-top:1px solid var(--line)!important;padding-bottom:env(safe-area-inset-bottom);font-size:13px}
+#top{top:calc(env(safe-area-inset-top) + 6px);right:6px;left:6px;gap:5px;flex-wrap:wrap}
+#top .pill{padding:4px 8px;font-size:11px}#hpw{min-width:120px!important}#top .pill small{display:none}#mname{display:none}
+#hint,#foot{display:none!important}
+#banner{top:calc(env(safe-area-inset-top) + 70px)}#bt{font-size:22px}#bs{font-size:12px}
+#rbox{left:6px;bottom:auto;top:calc(env(safe-area-inset-top) + 44px);width:150px;padding:4px}#rbox.big{width:min(300px,80vw)}
+#legend{display:none}.rtop button{font-size:16px;padding:0 6px}
+#mtools{position:absolute;right:6px;top:calc(env(safe-area-inset-top) + 44px);display:flex;flex-direction:column;gap:6px;z-index:2}
+#mtools .pill{font-size:11px;padding:6px 9px}#mmulti.on{color:var(--sand);border-color:var(--sand)}
+#side.atk~* #mtools,#view:has(~#side.atk) #mtools{display:none}
+#chipw{left:6px!important;right:6px;bottom:6px}.chip{padding:4px 8px}.chip b{font-size:12px}#backb{padding:8px 12px}
+#systems{grid-template-columns:repeat(5,1fr);gap:4px}.sy{padding:15px 1px 4px}.sy b{font-size:11px}.sy i{display:none}
+.dg{grid-template-columns:repeat(2,1fr)}.sec{padding:7px 8px}
+.stp button{width:38px;height:38px}
+.card{padding:16px}.card h1{font-size:30px}.ms{grid-template-columns:1fr!important}.how{grid-template-columns:1fr!important;font-size:12px}
+.row{flex-wrap:wrap}.row label{width:100%}
+.lrow{grid-template-columns:1fr 1fr}.dwrap{grid-template-columns:1fr!important}#dlist{flex-direction:row;flex-wrap:wrap}#dlist button{flex:1 1 45%}
+.ov{padding:8px;align-items:start;overflow-y:auto}.card.wide{max-height:none}
+
+#tabs{display:flex;position:sticky;top:0;z-index:3;background:var(--pan);border-bottom:1px solid var(--line)}
+#tabs button{flex:1;padding:10px 4px;font-weight:700;font-size:13px;color:var(--mut);border-bottom:2px solid transparent}
+#tabs button.on{color:var(--sand);border-bottom-color:var(--sand)}
+#side:not(.atk)[data-tab=eng] .sec:not(.t-eng),#side:not(.atk)[data-tab=tl] .sec:not(.t-tl),#side:not(.atk)[data-tab=base] .sec:not(.t-base),#side:not(.atk)[data-tab=log] .sec:not(.t-log){display:none}
+#side.atk #tabs{display:none}#tl{max-height:none}
+#log{font-size:13px}
+.about{background:rgba(233,182,92,.08);border:1px solid rgba(233,182,92,.25);border-radius:12px;padding:10px 12px;font-size:12.5px;line-height:1.7;margin:4px 0 10px}
+.about b{display:block;color:var(--sand);margin-top:4px}
+.helpb{width:100%;padding:11px;border-radius:11px;border:1px solid var(--sand);color:var(--sand);font-weight:900;margin-bottom:10px}
+#how-def,#how-atk{display:none!important}
+#help h3{margin:14px 0 4px;color:var(--sand);font-size:16px}#help ul{margin:0;padding-inline-start:18px;line-height:1.8;font-size:13.5px}#help b{color:var(--sand)}
+@keyframes rflash{0%,100%{box-shadow:0 0 0 0 rgba(255,91,69,0);background:rgba(6,17,11,.82)}25%,75%{box-shadow:0 0 0 4px rgba(255,91,69,.9),0 0 30px rgba(255,91,69,.8);background:rgba(120,20,12,.85)}50%{box-shadow:none;background:rgba(6,17,11,.82)}}
+#rbox.flash{animation:rflash .9s ease-in-out 1}
+button{min-height:30px}
+@keyframes chipin{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.12)}100%{transform:none}}.chip.new{animation:chipin .5s ease-out;border-color:var(--sand)}
+#chips{flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none;pointer-events:auto}#chips::-webkit-scrollbar{display:none}.chip{flex:none;padding:3px 8px!important}.chip b{font-size:11.5px!important}.chip i{font-size:10px}
+#mapbox{position:absolute;left:6px;top:calc(env(safe-area-inset-top) + 44px);width:150px;background:rgba(20,16,10,.85);border:1px solid rgba(233,182,92,.35);border-radius:12px;padding:4px;z-index:2}
+#mapbox .rtop{color:var(--sand)}#emap{width:100%;aspect-ratio:1;display:block;border-radius:8px;cursor:pointer}
+#homep{position:absolute;right:6px;top:calc(env(safe-area-inset-top) + 44px);z-index:2;font-size:12px;padding:6px 10px}
+#zoomb{position:absolute;right:6px;bottom:52px;display:flex;flex-direction:column;gap:6px;z-index:2}
+#zoomb button{width:42px;height:42px;border-radius:50%;background:rgba(11,14,17,.75);border:1px solid var(--line);font-size:22px;font-weight:900}
+.fire{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.fire button{background:rgba(255,91,69,.14);border:1px solid rgba(255,91,69,.45);border-radius:12px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.fire button b{font-size:15px;font-weight:900}.fire button small{font-size:9.5px;color:var(--mut);text-align:center}.fire button em{font-style:normal;font-weight:900;color:var(--sand);font-size:16px}
+.fire button:active{transform:scale(.95);background:rgba(255,91,69,.35)}.fire button:disabled{opacity:.35}
+.bigb{width:100%;padding:14px;border-radius:12px;font-size:17px;font-weight:900;background:var(--sand);color:#1a1307}
+#ms-bat .seg button{padding:9px 4px}
+#mapbox{background:transparent!important;border:2px solid rgba(255,91,69,.6)!important;padding:0!important;width:170px!important;overflow:hidden}
+#mapbox .rtop{background:rgba(20,10,8,.8);padding:3px 6px;margin:0}#mapbox.big{width:min(92vw,420px)!important}
+#emap{border-radius:0!important;background:transparent}
+#radio{position:absolute;top:calc(env(safe-area-inset-top) + 92px);right:8px;max-width:58%;background:rgba(10,20,12,.85);border:1px solid rgba(99,224,138,.45);color:#9ff0b8;font:700 12px system-ui;padding:6px 10px;border-radius:8px;opacity:0;transform:translateY(-6px);transition:.25s;pointer-events:none;z-index:3}
+#radio::before{content:"📡 ";}#radio.on{opacity:1;transform:none}
+#wave{position:absolute;left:50%;transform:translateX(-50%);bottom:58px;z-index:3;background:rgba(60,12,8,.85);border:2px solid var(--bad);color:#fff;border-radius:16px;padding:10px 22px;display:flex;flex-direction:column;align-items:center;min-width:150px}
+#wave b{font-size:18px;font-weight:900}#wave i{font-style:normal;font-size:11px;color:#ffc2b8}#wave:disabled{opacity:.55;border-color:#777}
+#wave.ready{animation:wpulse .7s ease-in-out infinite}@keyframes wpulse{50%{box-shadow:0 0 0 6px rgba(255,91,69,.35);background:rgba(140,20,10,.9)}}
+.fire button{touch-action:none;-webkit-user-select:none;user-select:none}
+#upgl{display:flex;flex-direction:column;gap:8px;margin-top:10px}#upgl button{text-align:right;background:rgba(233,182,92,.1);border:1px solid rgba(233,182,92,.45);border-radius:12px;padding:12px 14px}
+#upgl b{display:block;font-size:17px;font-weight:900;color:var(--sand)}#upgl i{font-style:normal;font-size:12.5px;color:var(--mut)}#upgl button:active{background:rgba(233,182,92,.3)}
+#camb.on{background:var(--sand);color:#111}
+#campnl{position:absolute;right:54px;bottom:52px;z-index:3;width:212px;background:rgba(11,14,17,.9);border:1px solid var(--line);border-radius:14px;padding:8px 9px;backdrop-filter:blur(6px)}
+#campnl .cpv{display:none}#campnl.gv .cpv{display:block}
+#campnl .cpt{font-size:11.5px;color:var(--mut);margin:6px 2px 4px}#campnl .cpt b{color:var(--sand);font-weight:800}
+#campnl .cpr{display:flex;gap:5px;margin-bottom:4px}#campnl .cpr button{flex:1;padding:9px 2px;border-radius:9px;font-size:12.5px;font-weight:800;background:rgba(255,255,255,.06);border:1px solid var(--line)}
+#campnl .cpr button.on{background:rgba(233,182,92,.25);border-color:var(--sand);color:var(--sand)}#campnl .cpr button:active{background:rgba(233,182,92,.35)}
+#campnl .cpx{width:100%;margin-top:4px;padding:8px;border-radius:9px;font-size:12.5px;background:rgba(255,80,60,.12);border:1px solid rgba(255,80,60,.4)}
+.fire .jetb{grid-column:1/-1;flex-direction:row;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(110,165,255,.14);border-color:rgba(110,165,255,.55)}
+.fire .jetb span{display:flex;flex-direction:column;align-items:flex-start}.fire .jetb:active{background:rgba(110,165,255,.35)}.chip.jetc{border-color:rgba(110,165,255,.7)}
+#emap{touch-action:none}#mapbox .rtop{display:flex;align-items:center;justify-content:space-between;gap:4px}#mapbox .rtop>span:first-child{white-space:nowrap;overflow:hidden;font-size:11px}
+#mapbox .pzb{display:flex;gap:3px;flex:none}#mapbox .pzb button{min-width:24px;height:24px;padding:0 4px;border-radius:7px;font-size:15px;font-weight:900;line-height:1;background:rgba(255,255,255,.1);border:1px solid rgba(233,182,92,.35);color:var(--sand)}
+.pvprow{display:flex;gap:6px;margin-top:10px}.pvprow input{flex:1;font-size:22px;text-align:center;letter-spacing:6px;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#fff}
+.pvprow button{padding:0 18px;border-radius:10px;font-weight:900}.pvpcode{font-size:46px;font-weight:900;letter-spacing:12px;text-align:center;color:var(--sand);margin:6px 0 10px}
+.pvpst{font-size:13.5px;min-height:20px;margin:10px 0 6px;color:var(--mut)}.pvpst.ok{color:#7be08f}.pvpst.bad{color:#ff7a66}.pvpx{width:100%;padding:10px;border-radius:10px;margin-top:4px}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="load">جارٍ تجهيز الميدان…</div>
+<div id="app">
+  <div id="view">
+    <canvas id="c"></canvas>
+    <div id="marks"></div>
+    <div id="top">
+      <div class="pill" id="hpw"><small>سلامة القاعدة</small><div id="hpb"><i id="hp"></i></div><span id="hpn">100</span></div>
+      <div class="pill"><small>أهداف متبقية</small><span id="left">0</span></div>
+      <div class="pill"><small>النقاط</small><span id="sc">0</span></div>
+      <div class="pill" id="mname">—</div>
+      <span class="sp"></span>
+      <button class="pill hid" id="nvb">رؤية ليلية</button>
+      <button class="pill" id="menub">القائمة</button>
+    </div>
+    <div id="hint">اسحب لتدوير المنظر · العجلة للتقريب · <kbd>Shift</kbd> تحديد متعدد · <kbd>A</kbd> كل المعادية · <kbd>V</kbd> تابع صاروخاً · <kbd>B</kbd> القاعدة</div>
+    <div id="banner"><div id="bt"></div><div id="bs"></div></div>
+    <div id="rbox"><div class="rtop"><span>رادار</span><span><button id="rzi">+</button><button id="rzo">−</button><button id="rsz">⤢</button></span></div><canvas id="radar"></canvas>
+      <div id="legend"><span><i style="color:var(--unk)"></i>مجهول</span><span><i style="color:var(--bad);transform:rotate(45deg)"></i>معادٍ</span><span><i style="color:var(--ok);border-radius:50%"></i>صديق</span><span><i style="color:#9fe8ff;border-radius:50%;width:5px;height:5px;background:#9fe8ff"></i>صاروخنا</span></div></div>
+    <div id="mapbox" class="hid"><div class="rtop"><span>● الخصم</span><span class="pzb"><button id="pzout">−</button><button id="pzin">+</button><button id="pzrs">⌖</button><button id="pipsz">⤢</button></span></div><canvas id="emap"></canvas></div>
+    <button class="pill hid" id="homep"></button>
+    <div id="radio"></div>
+    <button id="wave" class="hid"><b>موجة اعتراض</b><i></i></button>
+    <div id="zoomb"><button id="camb" title="الكاميرا">🎥</button></div>
+    <div id="campnl" class="hid">
+      <div class="cpv"><div class="cpt">زاوية النظر</div><div class="cpr"><button data-v="eye">مستوى الأرض</button><button data-v="tower">برج المراقبة</button><button data-v="high">فوق القاعدة</button></div>
+      <div class="cpt">الارتفاع <b id="camh"></b></div><div class="cpr"><button id="cdn">▼ أنزل</button><button id="cup">▲ أرفع</button></div>
+      <div class="cpr"><button id="cbk">⇩ للخلف</button><button id="cfw">⇧ للأمام</button></div></div>
+      <div class="cpt">التقريب</div><div class="cpr"><button id="zout">− بعّد</button><button id="zin">+ قرّب</button></div>
+      <button id="camx" class="cpx">إخفاء ✕</button>
+    </div>
+    <div id="mtools"><button class="pill" id="mmulti">تحديد متعدد</button><button class="pill" id="mall">كل المعادية</button></div>
+    <div id="chipw"><div id="chips"></div><button id="backb" class="hid">عُد للقاعدة</button></div>
+  </div>
+  <aside id="side" data-tab="eng">
+    <div id="tabs"><button data-t="eng" class="on">اشتباك</button><button data-t="tl">الأهداف</button><button data-t="base">القاعدة</button><button data-t="log">السجل</button></div>
+    <div class="sec dsec t-eng"><h4 class="hrow">الهدف المحدد <button class="pill" id="aiff"></button></h4><div id="det"></div></div>
+    <div class="sec dsec t-eng"><h4 class="hrow">الاشتباك: اختر المنظومة <button id="dbl" class="pill"></button></h4><div id="systems"></div></div>
+    <div class="sec dsec t-tl"><h4>الأهداف</h4><div id="tl"></div></div>
+    <div class="sec dsec t-base"><h4>حالة القاعدة</h4><div id="assets"></div></div>
+    <div id="atk"></div>
+    <div class="sec t-log"><h4>السجل</h4><div id="log"></div></div>
+    <div id="foot"><span id="qv"></span><span id="fps"></span></div>
+  </aside>
+</div>
+
+<div id="menu" class="ov hid"><div class="card">
+  <h1>صقر <span>الصحراء</span></h1><p id="msub"></p>
+  <div class="about">لعبة قيادة دفاع وهجوم جوي ثلاثية الأبعاد بالعربي: تتابع الرادار، تعرّف الأهداف، وتدير منظوماتك وذخيرتك لحماية قاعدتك أو ضرب قاعدة الخصم.<b>فكرة وإشراف: عبدالغني الشهري</b></div>
+  <button class="helpb" id="helpb">طريقة اللعب بالجوال</button>
+  <div class="seg modes" id="s-mode"></div>
+  <div class="hid" id="ms-bat"><div class="row"><label>الذخيرة</label><div class="seg" id="s-ammo"></div></div><p class="mut" style="margin:6px 0 10px">دفاع قاعدتك آلي بآخر منظومات اخترتها. اضغط هدفاً عند الخصم ثم اضغط الذخيرة. تفوز بتدمير مركز القيادة ورادار الإنذار.</p><button class="pri bigb" id="batgo">ابدأ الحملة: 5 معارك</button><button class="bigb" id="pvpgo" style="margin-top:8px;background:rgba(110,165,255,.16);border:1px solid rgba(110,165,255,.55)">⚔ معركة نفرين (أونلاين)</button></div>
+  <div class="ms hid" id="ms-atk"><button data-atk="0">ضربة تمهيدية<i>3 منظومات · دفاع بطيء</i></button><button data-atk="1">قاعدة محصّنة<i>4 منظومات · هدفان</i></button><button data-atk="2">القلعة<i>5 منظومات · 3 أهداف · ليل</i></button></div>
+  <div class="ms" id="ms-def"><button data-go="0">نوبة النهار<i>10 أهداف · تمهيدية</i></button><button data-go="1">غروب مزدحم<i>15 هدفاً</i></button><button data-go="2">ليلة طويلة<i>21 هدفاً · رؤية ليلية</i></button></div>
+  <ul class="how hid" id="how-atk">
+    <li><b>1.</b> ادرس قاعدة الخصم من الأعلى: أهدافه ودفاعاته ومواقعها.</li><li><b>2.</b> اختر هدفاً ثم وزّع عليه: سكووود وكروووز وشاااهد.</li>
+    <li><b>3.</b> اختر التوقيت ثم أطلق. الخصم يعترض جزءاً ولا يقدر على الكل.</li><li><b>4.</b> اضرب رادار المنظومة لتعطّلها، أو أشغلها بالمسيّرات أولاً.</li>
+    <li><b>5.</b> خانة كل ذخيرة تتابعها بالكاميرا، و<kbd>B</kbd> للعودة.</li><li><b>الفوز:</b> دمّر الأهداف المطلوبة قبل نفاد ترسانتك.</li>
+  </ul>
+  <ul class="how" id="how-def">
+    <li><b>0.</b> قبل المهمة: اختر حتى 5 منظومات ثم انشرها على الخريطة.</li><li><b>1.</b> حدّد هدفاً، أو عدة أهداف بـ <kbd>Shift</kbd>، أو كل المعادية بـ <kbd>A</kbd>.</li><li><b>2.</b> التحديد يشغّل IFF، ويُصنَّف المعادي خلال ثوانٍ.</li>
+    <li><b>3.</b> اشتبك بالأرقام <kbd>1</kbd>–<kbd>5</kbd>: صاروخ لكل هدف محدد، يوجّه نفسه.</li><li><b>4.</b> لكل منظومة رادار ومنصات؛ ضرب الرادار يعطّلها، وضرب منصة يقلّل ذخيرتها فقط.</li>
+    <li><b>5.</b> الكاميرا تلحق آخر صاروخ تطلقه، و<kbd>B</kbd> تعيدك للقاعدة.</li><li><b>ذخيرة:</b> المنصة الفارغة تُلقَّم تلقائياً من احتياط محدود. <kbd>D</kbd> صاروخان لكل هدف.</li><li><b>تنبيه:</b> إسقاط هدف صديق يُفشل المهمة. العجلة فوق الرادار تغيّر مداه.</li>
+  </ul>
+  <div class="row hid" id="erow"><label>دفاعات الخصم</label><div class="seg wrap" id="s-epre"></div></div>
+  <div class="row"><label>وقت المشهد</label><div class="seg" id="s-tod"></div></div>
+  <div class="row"><label>جودة الرسوم</label><div class="seg" id="s-q"></div></div>
+  <div class="fine"><button id="snd"></button><span>لعبة خيالية. الأسماء مختصرات للتمييز، والأرقام أرقام لعبة.</span></div>
+</div></div>
+<div id="loadout" class="ov hid"><div class="card wide">
+  <div class="lh"><h2>اختر منظوماتك</h2><span id="lcount">0/5</span></div>
+  <p class="mut">اختر دولة لعرض منظوماتها، ثم حدّد حتى 5 منظومات. «كل المنظومات» للاختيار الحر. الأسماء مستوحاة والأرقام أرقام لعبة.</p>
+  <div class="seg wrap" id="presets"></div><div id="lgrid"></div>
+  <div class="btns"><button id="lback">رجوع</button><button id="lnext" class="pri">التالي: نشر البطاريات</button></div>
+</div></div>
+<div id="deploy" class="ov hid"><div class="card wide">
+  <div class="lh"><h2>انشر البطاريات</h2></div>
+  <p class="mut">اختر منظومة من القائمة ثم اضغط مكانها على خريطة القاعدة. توزيعها يقلّل خسارتك من ضربة واحدة.</p>
+  <div class="dwrap"><canvas id="dmap"></canvas><div id="dlist"></div></div>
+  <div class="btns"><button id="dauto">توزيع تلقائي</button><button id="dback">رجوع</button><button id="dgo" class="pri">ابدأ المهمة</button></div>
+</div></div>
+<div id="help" class="ov hid"><div class="card wide">
+  <div class="lh"><h2>طريقة اللعب</h2></div>
+  <h3>المشهد</h3><ul>
+   <li>اسحب بإصبع لتدوير الكاميرا، وقرّب أو بعّد بإصبعين.</li>
+   <li>الرادار في الزاوية العليا: <b>+</b> و<b>−</b> لتغيير مداه، و<b>⤢</b> لتكبيره، واضغط أي هدف عليه لتحديده.</li>
+   <li>عند ظهور هدف جديد ينطلق إنذار ويومض الرادار مرتين.</li></ul>
+  <h3>وضع الدفاع</h3><ul>
+   <li>قبل المهمة اختر حتى 5 منظومات، ثم اضغط مكان كل منظومة على خريطة القاعدة أو «توزيع تلقائي».</li>
+   <li>اضغط هدفاً فيبدأ التعريف IFF تلقائياً، ويتحول للأحمر إذا كان معادياً.</li>
+   <li>«تحديد متعدد» لتحديد أكثر من هدف، و«كل المعادية» لتحديدها كلها.</li>
+   <li>في تبويب «اشتباك» اضغط زر المنظومة: صاروخ لكل هدف محدد، يوجّه نفسه.</li>
+   <li>«دفعة مزدوجة» تطلق صاروخين على كل هدف، مفيدة ضد السكووود.</li>
+   <li>الكاميرا تلحق آخر صاروخ، و«عُد للقاعدة» يرجعك. خانات الصواريخ أسفل المشهد للتنقل بينها.</li>
+   <li>المنصة الفارغة تُلقَّم تلقائياً من احتياط محدود. ضرب رادار منظومة يعطّلها.</li>
+   <li>لا تُسقط طائرة صديقة (الدائرة الخضراء)؛ هذا يُفشل المهمة.</li></ul>
+  <h3>وضع الهجوم</h3><ul>
+   <li>اضغط هدفاً في قاعدة الخصم (الأحمر هو المطلوب، والأزرق رادارات دفاعه).</li>
+   <li>وزّع عليه بأزرار + و−: سكووود قوي وسريع، كروووز دقيق ومنخفض، شاااهد بطيئة للإشغال.</li>
+   <li>اختر التوقيت ثم «أطلق الضربة». الخصم يعترض جزءاً فقط، فخطّط الموجة التالية بما بقي.</li>
+   <li>تفوز إذا دمّرت الأهداف المطلوبة قبل نفاد ذخائرك.</li></ul>
+  <h3>وضع المعركة</h3><ul><li>اختر مستوى الذخيرة أو «مفتوحة» ثم ابدأ.</li><li>زر «✈ إيييقل» يرسل طائرة (مستوحاة من ف-15) تقلع من خلف قاعدتك وتلقي 3 قنابل على الهدف المحدد ثم ترجع. طلعاتها محدودة، وقد يُسقطها دفاع الخصم.</li><li>نافذة قاعدة الخصم: اسحبها بإصبعك لتتحرك، وقرّب بإصبعين أو بزرّي + و−، وضغطتان سريعتان (أو ⌖) ترجعها للوسط.</li><li>اضغط هدفاً على قاعدة الخصم أو على الخريطة الصغيرة، ثم اضغط زر الذخيرة فتنطلق فوراً.</li><li>قاعدتك تُقصف في نفس الوقت ودفاعها آلي. زر «قاعدتك» أعلى الشاشة ينقلك لها ويرجعك.</li><li>تفوز بتدمير الأهداف المطلوبة، ويُعرض مشهد التدمير كاملاً قبل النتيجة.</li></ul>
+  <h3>نصائح</h3><ul><li>إذا ثقلت اللعبة اختر جودة «منخفضة» من القائمة.</li><li>شغّل صوت الجوال لتسمع الإنذارات والمنادي.</li></ul>
+  <div class="btns"><button id="helpx" class="pri">فهمت</button></div>
+</div></div>
+<div id="pvp" class="ov hid"><div class="card"><h3>⚔ معركة نفرين</h3><p class="mut">كل لاعب من جواله. واحد ينشئ غرفة ويعطي رقمها للثاني. يفوز اللي يدمّر مركز قيادة خصمه ورادار إنذاره أول.</p>
+<div id="pvp1"><button class="pri bigb" id="pvpnew">أنشئ غرفة</button><div class="pvprow"><input id="pvpcode" inputmode="numeric" maxlength="4" placeholder="رقم الغرفة"><button id="pvpjoin">ادخل</button></div></div>
+<div id="pvp2" class="hid"><div class="pvpcode" id="pvpshow"></div><button class="pri bigb" id="pvpstart" disabled>ابدأ المعركة</button></div>
+<p id="pvpst" class="pvpst"></p><button id="pvpx" class="pvpx">رجوع</button></div></div>
+<div id="upg" class="ov hid"><div class="card"><h3>اختر ترقية</h3><p class="mut" id="upgt"></p><div id="upgl"></div></div></div>
+<div id="result" class="ov hid"><div class="card"><h3 id="rt"></h3><p id="rs"></p><p id="rd"></p><div class="btns"><button id="rn" class="hid">المهمة التالية</button><button id="rr">إعادة</button><button id="rm">القائمة</button></div></div></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="./js/net-config.js"></script>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
