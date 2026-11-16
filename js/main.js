@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js';
-import { buildFX } from './fx.js';
+import { buildTextures } from './tex.js?v=6';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=6';
+import { buildFX } from './fx.js?v=6';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
@@ -101,10 +101,10 @@ function radarAlarm() {
   const r = $('rbox'); r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash');
   try { navigator.vibrate && navigator.vibrate([90, 60, 90]); } catch (e) { }
 }
-let arVoice = null; const pickVoice = () => { try { const vs = speechSynthesis.getVoices(); arVoice = vs.find(v => /^ar[-_]SA/i.test(v.lang)) || vs.find(v => /^ar/i.test(v.lang)) || null; } catch (e) { } };
+let arVoice = null; const pickVoice = () => { try { const sc = v => (/^ar[-_]SA/i.test(v.lang) ? 4 : 0) + (/enhanced|premium|natural|neural|محسّن|محسن/i.test(v.name) ? 8 : 0) + (/google|microsoft/i.test(v.name) ? 2 : 0); arVoice = speechSynthesis.getVoices().filter(v => /^ar/i.test(v.lang)).sort((a, b) => sc(b) - sc(a))[0] || null; } catch (e) { } };
 try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; } catch (e) { }
 const SAYMAP = { 'الرادار يعمل': 'الرادار شغّال! يالله يا شباب، عيونكم على الشاشة!', 'هدف معادٍ': 'انتبه! هدف معادي!', 'تم الاعتراض': 'أصبناه! كفو والله!', 'تهديد وشيك': 'انتبهوا! تهديد قريب، تحركوا بسرعة!', 'أُصيبت القاعدة': 'انضربت القاعدة! شدّوا حيلكم!', 'إصابة في القاعدة': 'انضربت القاعدة! شدّوا حيلكم!', 'سقط داخل القاعدة': 'طاح داخل القاعدة!', 'السماء آمنة': 'السما نظيفة! كفو عليكم يا أبطال!', 'فشلت المهمة': 'ما قدرنا هالمرة، نعيدها ونرجع أقوى!', 'خطّط الضربة': 'جهّز ضربتك يا بطل!', 'انطلقت الضربة': 'أطلقنا! يالله يا شباب!', 'دُمّر الهدف': 'دمّرناه! كفو!', 'نجحت الضربة': 'الضربة نجحت! كفو عليك!', 'فشلت الضربة': 'ما وصلنا للهدف، نعيد الخطة!', 'تعطّلت منظومة': 'عطّلنا منظومتهم!', 'أسقطتَ هدفاً صديقاً': 'لا لا! هذا صديق!', 'دُمّر رادار الإنذار المبكر': 'راح رادار الإنذار! انتبهوا!', 'هدف ثانٍ': 'هدف ثاني جاي!', 'تم': '' };
-function say(text) { text = SAYMAP[text] ?? text; if (!text) return; if (!A.on || !arVoice) return; try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.voice = arVoice; u.lang = arVoice.lang; u.rate = 1.22; u.pitch = 1.12; u.volume = 1; speechSynthesis.speak(u); } catch (e) { } }
+function say(text) { text = SAYMAP[text] ?? text; if (!text) return; if (!A.on || !arVoice) return; try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.voice = arVoice; u.lang = arVoice.lang; u.rate = 1.04; u.pitch = 1; u.volume = 1; speechSynthesis.speak(u); } catch (e) { } }
 
 // ---------- قاعدة المنظومات: أسماء مستوحاة، وأرقام لعبة مقرّبة (ليست بيانات حقيقية)
 const TIER = { upper: { t: 'طبقة عليا', len: 6.4, r: 0.2, color: 0xe6e6e2, model: 'octo' }, mid: { t: 'بعيد ومتوسط', len: 5.6, r: 0.22, color: 0xd9d7cf, model: 'quad' }, short: { t: 'قصير المدى', len: 3.6, r: 0.16, color: 0xcfc8b0, model: 'quadS' }, gun: { t: 'مدفع', model: 'gun' }, beam: { t: 'طاقة موجّهة', model: 'beam' } };
@@ -489,9 +489,9 @@ function finish(win) {
 
 // ---------- الكاميرا
 let shake = 0; const GROUND = new V3(30, 210, 400); Object.assign(G.cam, { gy: 0, gp: -0.42, gfov: 66 });
-const VIEWS = { eye: { p: [20, 2.4, 190], gp: 0.08, fov: 64 }, tower: { p: [30, 48, 330], gp: -0.1, fov: 64 }, high: { p: [30, 210, 400], gp: -0.42, fov: 66 } };
-try { G.view = localStorage.getItem('shView') || 'eye'; } catch (e) { G.view = 'eye'; }
-function setView(k) { const v = VIEWS[k] || VIEWS.eye; G.view = VIEWS[k] ? k : 'eye'; GROUND.set(...v.p); Object.assign(G.cam, { gy: 0, gp: v.gp, gfov: v.fov }); try { localStorage.setItem('shView', G.view); } catch (e) {} viewUI(); }
+const VIEWS = { mid: { p: [30, 30, 205], gp: -0.2, fov: 62 }, eye: { p: [20, 2.4, 190], gp: 0.08, fov: 64 }, tower: { p: [30, 48, 330], gp: -0.1, fov: 64 }, high: { p: [30, 210, 400], gp: -0.42, fov: 66 } };
+try { G.view = localStorage.getItem('saqrView') || 'mid'; } catch (e) { G.view = 'mid'; }
+function setView(k) { const v = VIEWS[k] || VIEWS.mid; G.view = VIEWS[k] ? k : 'mid'; GROUND.set(...v.p); Object.assign(G.cam, { gy: 0, gp: v.gp, gfov: v.fov }); try { localStorage.setItem('saqrView', G.view); } catch (e) {} viewUI(); }
 function viewUI() { document.querySelectorAll('#campnl [data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === G.view)); $('camh').textContent = Math.round(GROUND.y) + ' م'; }
 function autoLook(rdt) {
   let p = null, best = 1e9;
@@ -1251,7 +1251,7 @@ function frame(now) {
       lowT = fps < 40 && Q.pr <= min + 0.01 ? lowT + 1 : 0; if (lowT >= 2 && Q.tier !== 'low') { lowT = 0; applyTier(Q.tier === 'high' ? 'med' : 'low'); } } }
 }
 G.sim = (sec, step = 1 / 60, noRender) => { for (let t = 0; t < sec - 1e-6; t += step) { update(step, step); updateCamera(step); } if (!noRender) { if (G.mode === 'bat') { emT = 1; drawEmap(1); } drawRadar(0.016); G.mode === 'bat' ? uiBat() : G.mode === 'atk' ? uiAtk() : uiAll(); F.render(G.time); renderPip(); } };
-G.api = { scene, renderer, waveFire, startBattle, fireBat, makeMissile, orient, startAtk, planAdd, launchStrike, eState, openLoadout, buildBatteries, start, engage, startIFF, classify, select, selectAllHostile, followShot, toBase, F, W, camera, SYS, sysState, why, integrity };
+G.api = { scene, renderer, waveFire, VIEWS, setView, startBattle, fireBat, makeMissile, orient, startAtk, planAdd, launchStrike, eState, openLoadout, buildBatteries, start, engage, startIFF, classify, select, selectAllHostile, followShot, toBase, F, W, camera, SYS, sysState, why, integrity };
 
 buildEnemyInfra(); { const keep = new Set(); [...G.assets, ...G.eA].forEach(a => (a.objs || []).forEach(o => keep.add(o))); compactBase(W.home.group, keep); compactBase(W.enemy.group, keep); }
 G.place = Object.assign(autoPlace(G.loadout), G.place); buildBatteries(); setQuality(qPref); W.setTime('day'); shadowOnce(); show('load', false); show('menu', true); uiAll();

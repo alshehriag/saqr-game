@@ -279,10 +279,23 @@ export function buildWorld(scene, renderer, T, Q) {
     }
     // سياج
     const R = 215, fm = tiled(MT.fence, R * 2 / 2.4, 1);
-    [[0, -R, 0], [0, R, 0], [-R, 0, 1], [R, 0, 1]].forEach(([x, z, r]) => { const f = new THREE.Mesh(new THREE.PlaneGeometry(R * 2, 2.6), fm); f.position.set(x, 1.3, z); f.rotation.y = r * Math.PI / 2; B.add(f); });
+    [[0, -R, 0], [0, R, 0], [-R, 0, 1], [R, 0, 1]].forEach(([x, z, r]) => { const f = new THREE.Mesh(new THREE.PlaneGeometry(R * 2, 3.0), fm); f.position.set(x, 1.5, z); f.rotation.y = r * Math.PI / 2; B.add(f); });
     { const n = 4 * 36, im = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.06, 0.06, 2.9, 5), MT.steel, n), d = new THREE.Object3D(); let k = 0;
       for (let s = 0; s < 4; s++) for (let i = 0; i < 36; i++) { const t = -R + (i / 36) * R * 2; d.position.set(s < 2 ? t : (s === 2 ? -R : R), 1.45, s < 2 ? (s === 0 ? -R : R) : t); d.updateMatrix(); im.setMatrixAt(k++, d.matrix); } im.castShadow = true; B.add(im); }
     [[-R + 6, -R + 6], [R - 6, -R + 6], [-R + 6, R - 6], [R - 6, R - 6]].forEach(([x, z]) => { const g = guardTower(); g.position.set(x, 0, z); B.add(g); });
+    // ساتر ترابي حول السياج + سلك شائك ملفوف أعلى السياج + حواجز خرسانية عند البوابات
+    { const bm = MT.berm || (MT.berm = mat({ color: 0xf0d3a0, map: T.sand, roughness: 1, metalness: 0 })), wm = MT.wire || (MT.wire = mat({ color: 0x3b3d40, roughness: 0.5, metalness: 0.8 }));
+      const sh2 = new THREE.Shape(); sh2.moveTo(-7, 0); sh2.lineTo(-1.8, 2.2); sh2.lineTo(1.8, 2.2); sh2.lineTo(7, 0); sh2.closePath();
+      const seg = (len) => { const g = new THREE.ExtrudeGeometry(sh2, { depth: len, bevelEnabled: false }); g.translate(0, 0, -len / 2); return g; }, D = R + 10, gap = [40, 82];
+      const berm = (x, z, len, ry) => { const m = new THREE.Mesh(seg(len), bm); m.position.set(x, 0, z); m.rotation.y = ry; m.receiveShadow = true; m.castShadow = true; B.add(m); };
+      berm(0, -D, D * 2 + 11, Math.PI / 2); berm(0, D, D * 2 + 11, Math.PI / 2);
+      for (const sx of [-D, D]) { const a1 = -D - 5, b1 = gap[0], a2 = gap[1], b2 = D + 5; berm(sx, (a1 + b1) / 2, b1 - a1, 0); berm(sx, (a2 + b2) / 2, b2 - a2, 0); }
+      const helix = (x0, z0, x1, z1) => { const L = Math.hypot(x1 - x0, z1 - z0), n = Math.floor(L / 0.9), pts = []; for (let i = 0; i <= n * 8; i++) { const t = i / (n * 8), a = i / 8 * Math.PI * 2; pts.push(new THREE.Vector3(x0 + (x1 - x0) * t + (z1 !== z0 ? Math.cos(a) * 0.38 : 0), 3.05 + Math.sin(a) * 0.38, z0 + (z1 - z0) * t + (z1 === z0 ? Math.cos(a) * 0.38 : 0))); }
+        const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), n * 8, 0.035, 3, false), wm); B.add(m); };
+      helix(-R, -R, R, -R); helix(-R, R, R, R); helix(-R, -R, -R, R); helix(R, -R, R, R);
+      const jm = new THREE.InstancedMesh(new THREE.BoxGeometry(3.2, 1.1, 0.9), MT.concrete, 24), d = new THREE.Object3D(); let k = 0;
+      for (const sx of [-1, 1]) for (let i = 0; i < 12; i++) { d.position.set(sx * (R + 22) + sx * (i % 2) * 3, 0.55, gap[0] + 4 + Math.floor(i / 2) * 6.5); d.rotation.y = Math.PI / 2 + (i % 2 ? 0.3 : -0.3); d.updateMatrix(); jm.setMatrixAt(k++, d.matrix); }
+      jm.castShadow = jm.receiveShadow = true; B.add(jm); }
     // نخيل وإنارة على جانب الطريق
     for (let i = 0; i < Q.palms; i++) { const x = -230 + i * (460 / Q.palms) + Math.random() * 6, p = palm(6 + Math.random() * 4); p.position.set(x, 0, (i % 2 ? 69 : 51) + Math.random() * 2); B.add(p); }
     for (let i = 0; i < 6; i++) { const p = palm(6 + Math.random() * 3); p.position.set(40 + Math.random() * 40, 0, 104 + Math.random() * 14); B.add(p); }
