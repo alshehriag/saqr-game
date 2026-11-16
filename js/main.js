@@ -1109,7 +1109,8 @@ function pvpLobby() {
   const ps = (NET.peerSys || []).map(k => DB[k] ? DB[k].name : k).join('، ');
   pvpStatus(NET.host ? `دخل خصمك! منظوماته: ${ps}` : `أنت داخل. منظومات خصمك: ${ps}. بانتظار المضيف يبدأ…`, 'ok'); $('pvpstart').disabled = false; show('pvpstart', NET.host);
 }
-$('pvpgo').onclick = () => { audioInit(); show('menu', false); show('pvp', true); show('pvp1', true); show('pvp2', false); pvpStatus(''); $('pvpcode').value = ''; };
+$('pvpgo').onclick = () => { audioInit(); show('menu', false); show('pvp', true); show('pvp1', true); show('pvp2', false); pvpStatus(''); $('pvpcode').value = '';
+  if (!window.FBCFG && !/[?&]local\b/.test(location.search)) { show('pvp1', false); $('pvpst').innerHTML = 'معركة النفرين تشتغل من النسخة الأونلاين، وبدون حساب:<br><a href="https://alshehriag.github.io/saqr-game/" target="_blank" rel="noopener" style="color:var(--sand);font-weight:900">alshehriag.github.io/saqr-game</a>'; } };
 $('pvpnew').onclick = () => netOpen(String(1000 + Math.floor(Math.random() * 9000)), true);
 $('pvpjoin').onclick = () => { const c = $('pvpcode').value.replace(/\D/g, ''); if (c.length !== 4) return pvpStatus('اكتب رقم الغرفة (4 أرقام)', 'bad'); netOpen(c, false); };
 $('pvpstart').onclick = () => { if (!NET.peer) return; NET.gotSt = false; G.goPending = { ammo: G.ammoLvl, tod: G.todPick || 'day' }; netSend('go', G.goPending); startPvp(); };
