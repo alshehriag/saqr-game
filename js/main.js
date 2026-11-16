@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js?v=12';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=12';
-import { buildFX } from './fx.js?v=12';
+import { buildTextures } from './tex.js?v=13';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=13';
+import { buildFX } from './fx.js?v=13';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
@@ -683,7 +683,7 @@ const seg = (id, items, cur, cb) => { const el = $(id); el.innerHTML = ''; Objec
 G.todPick = 'auto'; seg('s-tod', { auto: 'حسب المهمة', day: 'نهار', sunset: 'غروب', night: 'ليل' }, 'auto', k => { G.todPick = k; W.setTime(k === 'auto' ? 'day' : k); shadowOnce(); });
 seg('s-q', { auto: 'تلقائي', low: 'منخفضة', med: 'متوسطة', high: 'عالية' }, qPref, k => setQuality(k));
 document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => openLoadout(+b.dataset.go));
-$('rr').onclick = () => G.pvp ? (NET.host && NET.peer ? $('pvpstart').onclick() : null) : G.mode === 'bat' ? startBattle() : G.mode === 'atk' ? startAtk(G.ai) : start(G.mi); $('rn').onclick = () => G.mode === 'bat' ? openUpgrade() : G.mode === 'atk' ? startAtk(G.ai + 1) : openLoadout(G.mi + 1);
+$('rr').onclick = () => G.pvp ? (NET.r ? pvpReopen() : null) : G.mode === 'bat' ? startBattle() : G.mode === 'atk' ? startAtk(G.ai) : start(G.mi); $('rn').onclick = () => G.mode === 'bat' ? openUpgrade() : G.mode === 'atk' ? startAtk(G.ai + 1) : openLoadout(G.mi + 1);
 const menu = () => { if (G.pvp) netLeave(); show('rr', true); clear(); leaveAtk(); restoreAll(); G.state = 'menu'; toBase(); show('result', false); show('menu', true); uiAll(); }; $('rm').onclick = menu; $('menub').onclick = menu;
 
 
@@ -997,7 +997,7 @@ function startBattle() {
   G.place = Object.assign(autoPlace(G.loadout), G.place); buildBatteries(); batObjs.forEach(o => o.visible = true);
   W.setTime(G.todPick && G.todPick !== 'auto' ? G.todPick : ST.time); shC.set(30, 0, -10); shadowOnce();
   F.post.nv = false; show('nvb', !!W.preset.night);
-  const A0 = AMMO[G.ammoLvl]; G.openAmmo = G.ammoLvl === 'o'; G.revenge = 0; G.inv = G.openAmmo ? { b: 0, c: 0, d: 0, e: 0 } : { b: A0.b + G.up.ammo.b, c: A0.c + G.up.ammo.c, d: A0.d + G.up.ammo.d, e: JSORT[G.ammoLvl] + G.up.ammo.e };
+  const A0 = G.pvp ? PKG[G.pvpPkg] : AMMO[G.ammoLvl]; G.openAmmo = !G.pvp && G.ammoLvl === 'o'; G.revenge = 0; G.inv = G.openAmmo ? { b: 0, c: 0, d: 0, e: 0 } : { b: A0.b + G.up.ammo.b, c: A0.c + G.up.ammo.c, d: A0.d + G.up.ammo.d, e: (G.pvp ? 2 : JSORT[G.ammoLvl]) + G.up.ammo.e };
   Object.assign(G, { state: 'play', t: 0, at: 0, score: 0, kills: 0, leaks: 0, nextId: 1, sel: null, follow: null, rCap: 30000, failWhy: '', forceFail: false, endT: 0, queue: [], fq: [], nextThreat: 10, topView: false, speed: 1, cine: null, pv: { x: 0, z: 0, k: 1 }, pops: [], holdK: null, waveCd: 0, slowT: 0, lastSave: -99 }); G.ws = { n: 0, hit: 0, shot: 0 }; G.selSet.clear();
   G.cam.center.copy(HOMEC); G.cam.dist = 420; G.cam.el = 0.92; G.cam.yaw = 0.25; G.cam.lastF = null; G.cam.focus = null; G.cam.fw = 0; setView(G.view); G.lastDrag = 0; toBase();
   G.eA.forEach((a, i) => { const mk = a.mk = document.createElement('div'); mk.className = 'mk tg' + (L.goals.includes(a.name) ? ' goal' : '') + (a.kind === 'radar' ? ' rad' : ''); mk.dataset.a = i; mk.innerHTML = `<b>${a.name}</b>`; $('marks').appendChild(mk); });
@@ -1059,7 +1059,10 @@ function jetTick(dt) {
   }
 }
 // ---------- معركة نفرين: كل جوال يحكم على قاعدته (اعتراض وضرر)، ويرسل حالتها للخصم
-const NET = { r: null, uid: Math.random().toString(36).slice(2, 9), code: '', host: false, peer: null, peerSys: null, last: 0, sent: false, seq: 1, hiT: 0, goT: 0, gotSt: false };
+const NET = { r: null, uid: Math.random().toString(36).slice(2, 9), code: '', host: false, peer: null, peerSys: null, last: 0, sent: false, seq: 1, hiT: 0, goT: 0, gotSt: false, rdy: false, peerRdy: false, peerCn: '', pv: 0, tod: 'day', seen: 0, startT: 0 };
+const PROTO = 2, PKG = { bal: { n: 'متوازن', b: 10, c: 16, d: 24 }, hvy: { n: 'باليستي ثقيل', b: 18, c: 10, d: 10 }, crz: { n: 'كروز كثيف', b: 6, c: 26, d: 14 }, swm: { n: 'سرب مسيّرات', b: 5, c: 10, d: 44 } };
+G.pvpPkg = store.get('pk', 'bal'); if (!PKG[G.pvpPkg]) G.pvpPkg = 'bal';
+const netHi = () => netSend('hi', { sys: G.loadout, host: NET.host, cn: G.preset, rdy: NET.rdy, tod: G.todPick || 'day', v: PROTO });
 let roomBase;
 async function getRoom() {
   if (roomBase !== undefined && roomBase) return roomBase;
@@ -1079,23 +1082,23 @@ function fbRoom() {
 }
 function localRoom() { return { join(name) { const bc = new BroadcastChannel(name), fns = {}; bc.onmessage = e => { const f = fns[e.data.t]; if (f) f(e.data.d); }; return { emit(t, d) { bc.postMessage({ t, d }); }, on(t, fn) { fns[t] = fn; }, leave() { bc.close(); } }; } }; }
 function netSend(ty, o = {}) { if (!NET.r) return; try { NET.r.emit('g', Object.assign({ ty, u: NET.uid }, o)); } catch (e) {} }
-function netLeave() { if (NET.r) { netSend('bye'); try { NET.r.leave && NET.r.leave(); } catch (e) {} } clearInterval(NET.iv); NET.r = null; NET.peer = null; NET.peerSys = null; G.pvp = false; }
+function netLeave() { if (NET.r) { netSend('bye'); try { NET.r.leave && NET.r.leave(); } catch (e) {} } clearInterval(NET.iv); NET.r = null; NET.peer = null; NET.peerSys = null; NET.rdy = NET.peerRdy = false; G.pvp = false; }
 async function netOpen(code, host) {
   pvpStatus('جاري الاتصال…'); const base = await getRoom();
   if (!base) { pvpStatus(window.FBCFG ? 'ما قدرت أتصل بخادم اللعب. تأكد من الإنترنت وجرّب مرة ثانية.' : 'معركة النفرين تشتغل من رابط النسخة الأونلاين.', 'bad'); return false; }
   NET.host = host; try { NET.r = await base.join('saqr-pvp-' + code); } catch (e) { NET.r = null; }
   if (!NET.r) { pvpStatus('تعذّر دخول الغرفة', 'bad'); return false; }
-  Object.assign(NET, { code, host, peer: null, peerSys: null, gotSt: false }); NET.r.on('g', (d) => netMsg(d && d.data && d.data.ty ? d.data : d));
-  clearInterval(NET.iv); NET.iv = setInterval(() => { if (!NET.peer) netSend('hi', { sys: G.loadout, host }); else if (NET.host && G.goPending && !NET.gotSt) netSend('go', G.goPending); }, 1200);
-  netSend('hi', { sys: G.loadout, host }); pvpLobby(); return true;
+  Object.assign(NET, { code, host, peer: null, peerSys: null, rdy: false, peerRdy: false, pv: 0 }); NET.r.on('g', (d) => netMsg(d && d.data && d.data.ty ? d.data : d));
+  clearInterval(NET.iv); NET.iv = setInterval(() => { const now = performance.now(); if (!G.pvp) { netHi(); if (NET.peer && now - NET.seen > 9000 && NET.peerRdy !== null) { NET.peerRdy = null; pvpLobby(); } } else if (now - NET.startT < 7000) netHi(); }, 1200);
+  netHi(); pvpLobby(); return true;
 }
 function netMsg(d) {
   if (!d || d.u === NET.uid || !d.ty) return; if (NET.peer && d.u !== NET.peer) return; NET.last = performance.now();
-  if (d.ty === 'hi') { const first = !NET.peer; NET.peer = d.u; NET.peerSys = d.sys; if (first) { netSend('hi', { sys: G.loadout, host: NET.host }); pvpLobby(); } return; }
-  if (d.ty === 'bye') { if (G.pvp && G.state === 'play') pvpDrop('خرج خصمك من المعركة'); else { NET.peer = null; pvpLobby(); } return; }
-  if (d.ty === 'go') { if (!NET.host && !(G.pvp && (G.state === 'play' || G.state === 'cine'))) { G.ammoLvl = d.ammo; G.todPick = d.tod; startPvp(); } return; }
+  if (d.ty === 'hi') { const first = !NET.peer; NET.peer = d.u; NET.seen = performance.now(); NET.pv = d.v | 0; NET.peerRdy = !!d.rdy; if (!G.pvp) { NET.peerSys = d.sys; NET.peerCn = d.cn || ''; if (d.host && d.tod) NET.tod = d.tod; } if (first) netHi(); if (!G.pvp) { pvpLobby(); pvpMaybeStart(); } return; }
+  if (d.ty === 'bye') { if (G.pvp && G.state === 'play') pvpDrop('خرج خصمك من المعركة'); else if (!G.pvp) { NET.peer = null; NET.peerRdy = false; pvpLobby(); } return; }
+  if (!G.pvp && NET.rdy && NET.peerSys && (d.ty === 'st' || d.ty === 'f')) pvpMaybeStart(true);
   if (!G.pvp) return;
-  if (d.ty === 'st') { NET.gotSt = true; G.goPending = null; applySt(d); return; }
+  if (d.ty === 'st') { applySt(d); return; }
   if (G.state !== 'play') return;
   if (d.ty === 'f') netIncoming(d);
   else if (d.ty === 'x') { const m = G.mun.find(m => m.nid === d.id && m.alive); if (m) { F.explode(m.pos.clone(), m.K.drone ? 0.5 : 0.95, { vel: m.vel, debris: 30 }); G.pops.push({ x: m.pos.x, z: m.pos.z, t: 0, s: 'اعتُرض', c: '#9fe8ff' }); G.ws.shot++; iboom(0.6, 1.4); endShot(m); } }
@@ -1133,19 +1136,33 @@ function pvpTick(dt) {
     if (G.forceFail || integrity() < 30 || !SYSK.some(k => sysState(k).on)) { NET.sent = true; netSend('st', { a: homeSt(), i: integrity() }); [0, 700, 1500].forEach(t => setTimeout(() => netSend('end'), t)); } }
   if (performance.now() - NET.last > 25000) pvpDrop('انقطع الاتصال بخصمك');
 }
-function startPvp() { G.pvp = true; G.up = newUp(); G.stage = 0; show('pvp', false); startBattle(); }
+function startPvp() { G.pvp = true; NET.startT = NET.last = performance.now(); G.up = newUp(); G.stage = 0; show('pvp', false); netHi(); startBattle(); }
+function pvpMaybeStart(force) { if (G.pvp || !NET.rdy || !NET.peer || !NET.peerSys || !NET.peerSys.length) return; if (!force && (!NET.peerRdy || NET.pv !== PROTO)) return; G.todPick = NET.host ? (G.todPick || 'day') : (NET.tod || 'day'); startPvp(); }
 function pvpStatus(t, cls = '') { const e = $('pvpst'); e.textContent = t; e.className = 'pvpst ' + cls; }
-function pvpLobby() {
-  show('pvp1', false); show('pvp2', true); $('pvpshow').textContent = NET.code;
-  if (!NET.peer) { pvpStatus(NET.host ? 'أعطِ صاحبك هذا الرقم، وانتظر دخوله…' : 'بانتظار المضيف…'); $('pvpstart').disabled = true; show('pvpstart', NET.host); return; }
-  const ps = (NET.peerSys || []).map(k => DB[k] ? DB[k].name : k).join('، ');
-  pvpStatus(NET.host ? `دخل خصمك! منظوماته: ${ps}` : `أنت داخل. منظومات خصمك: ${ps}. بانتظار المضيف يبدأ…`, 'ok'); $('pvpstart').disabled = false; show('pvpstart', NET.host);
+function pvpSetup() {
+  const pool = PRESETS[G.preset].l; G.loadout = G.loadout.filter(k => DB[k]).slice(0, MAXSYS); if (!G.loadout.length) G.loadout = pool.slice(0, MAXSYS);
+  $('pvpcn').innerHTML = Object.entries(PRESETS).map(([k, p]) => `<button data-k="${k}" class="${k === G.preset ? 'on' : ''}">${p.n}</button>`).join('');
+  $('pvpdf').innerHTML = pool.map(k => `<button data-k="${k}" class="${G.loadout.includes(k) ? 'on' : ''}">${DB[k].name}</button>`).join(''); $('pvpdn').textContent = `(${G.loadout.length} من ${MAXSYS})`;
+  $('pvppk').innerHTML = Object.entries(PKG).map(([k, p]) => `<button data-k="${k}" class="${k === G.pvpPkg ? 'on' : ''}">${p.n}<i>باليستي ${p.b} · كروز ${p.c} · مسيّرات ${p.d}</i></button>`).join('');
+  $('pvpcn').querySelectorAll('button').forEach(b => b.onclick = () => { G.preset = b.dataset.k; store.set('ps', G.preset); G.loadout = PRESETS[G.preset].l.slice(0, MAXSYS); store.set('lo', G.loadout.join(',')); pvpSetup(); netHi(); });
+  $('pvpdf').querySelectorAll('button').forEach(b => b.onclick = () => { const k = b.dataset.k, i = G.loadout.indexOf(k); if (i >= 0) { if (G.loadout.length > 1) G.loadout.splice(i, 1); } else if (G.loadout.length < MAXSYS) G.loadout.push(k); else return pvpStatus(`الحد ${MAXSYS} منظومات. شيل وحدة أول.`, 'bad'); store.set('lo', G.loadout.join(',')); pvpSetup(); netHi(); });
+  $('pvppk').querySelectorAll('button').forEach(b => b.onclick = () => { G.pvpPkg = b.dataset.k; store.set('pk', G.pvpPkg); pvpSetup(); });
 }
-$('pvpgo').onclick = () => { audioInit(); show('menu', false); show('pvp', true); show('pvp1', true); show('pvp2', false); pvpStatus(''); $('pvpcode').value = '';
+function pvpLobby() {
+  show('pvp1', false); show('pvp2', true); $('pvpshow').textContent = NET.code; $('pvpset').classList.toggle('lock', NET.rdy); const sb = $('pvpstart'); show('pvpstart', true);
+  sb.disabled = !NET.peer; sb.textContent = NET.rdy ? 'ألغِ الجاهزية' : 'أنا جاهز ✓'; sb.classList.toggle('pri', !NET.rdy);
+  if (!NET.peer) { $('pvpfoe').textContent = NET.host ? 'أعطِ صاحبك رقم الغرفة. تقدر تجهّز اختياراتك الحين.' : 'جاري البحث عن الغرفة… تأكد من الرقم.'; pvpStatus(''); return; }
+  const ps = (NET.peerSys || []).map(k => DB[k] ? DB[k].name : k).join('، '), cn = PRESETS[NET.peerCn] ? PRESETS[NET.peerCn].n : '';
+  $('pvpfoe').innerHTML = `<b>خصمك${cn ? ' · ' + cn : ''}</b> — ${NET.peerRdy === null ? 'غير متصل الحين…' : NET.peerRdy ? 'جاهز ✓' : 'يختار…'}<br>دفاعه: ${ps}`;
+  if (NET.pv !== PROTO) return pvpStatus('خصمك على نسخة قديمة من اللعبة. خلّه يحدّث الصفحة ويدخل الغرفة من جديد.', 'bad');
+  pvpStatus(NET.rdy ? (NET.peerRdy ? 'تبدأ الحين…' : 'أنت جاهز. بانتظار خصمك يضغط جاهز…') : (NET.peerRdy ? 'خصمك جاهز! اضغط «أنا جاهز» وتبدأ المعركة.' : 'اختر دولتك ودفاعك وأسلحتك ثم اضغط «أنا جاهز».'), NET.rdy || NET.peerRdy ? 'ok' : '');
+}
+function pvpReopen() { G.pvp = false; NET.rdy = false; NET.peerRdy = false; show('result', false); show('pvp', true); pvpSetup(); pvpLobby(); netHi(); }
+$('pvpgo').onclick = () => { audioInit(); show('menu', false); show('pvp', true); show('pvp1', true); show('pvp2', false); pvpStatus(''); $('pvpcode').value = ''; pvpSetup();
   if (!window.FBCFG && !/[?&]local\b/.test(location.search)) { show('pvp1', false); $('pvpst').innerHTML = 'معركة النفرين تشتغل من النسخة الأونلاين، وبدون حساب:<br><a href="https://alshehriag.github.io/saqr-game/" target="_blank" rel="noopener" style="color:var(--sand);font-weight:900">alshehriag.github.io/saqr-game</a>'; } };
 $('pvpnew').onclick = () => netOpen(String(1000 + Math.floor(Math.random() * 9000)), true);
 $('pvpjoin').onclick = () => { const c = $('pvpcode').value.replace(/\D/g, ''); if (c.length !== 4) return pvpStatus('اكتب رقم الغرفة (4 أرقام)', 'bad'); netOpen(c, false); };
-$('pvpstart').onclick = () => { if (!NET.peer) return; NET.gotSt = false; G.goPending = { ammo: G.ammoLvl, tod: G.todPick || 'day' }; netSend('go', G.goPending); startPvp(); };
+$('pvpstart').onclick = () => { if (!NET.peer) return; NET.rdy = !NET.rdy; netHi(); pvpLobby(); pvpMaybeStart(); };
 $('pvpx').onclick = () => { netLeave(); show('pvp', false); show('menu', true); };
 function fireBat(k) {
   if (G.mode !== 'bat' || G.state !== 'play') return; const a = G.aSel;
