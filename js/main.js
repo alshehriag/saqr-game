@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js?v=15';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=15';
-import { buildFX } from './fx.js?v=15';
+import { buildTextures } from './tex.js?v=16';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=16';
+import { buildFX } from './fx.js?v=16';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
@@ -792,7 +792,7 @@ function clearAtk() {
   G.mun = []; G.eshots = []; G.lq = []; if (G.plan) G.plan.clear(); G.aSel = null;
 }
 function leaveAtk() {
-  if (G.mode !== 'atk' && G.mode !== 'bat') return; clearAtk(); G.mode = 'def'; show('mapbox', false); show('homep', false); show('foep', false); show('zoomb', false); $('app').classList.remove('batm'); G.foeView = false; $('marks').classList.remove('foe'); show('mtools', true); G.topView = false; removeBoss(); G.speed = 1; W.enemy.group.visible = false; eBat.forEach(o => scene.remove(o)); eBat = []; G.eA = G.eA.filter(a => !a.bat); G.eSys = {};
+  if (G.mode !== 'atk' && G.mode !== 'bat') return; clearAtk(); G.mode = 'def'; show('mapbox', false); show('homep', false); show('foep', false); show('zoomq', false); $('app').classList.remove('batm'); G.foeView = false; $('marks').classList.remove('foe'); show('mtools', true); G.topView = false; removeBoss(); G.speed = 1; W.enemy.group.visible = false; eBat.forEach(o => scene.remove(o)); eBat = []; G.eA = G.eA.filter(a => !a.bat); G.eSys = {};
   shC.set(30, 0, -10); G.cam.center.set(55, 0, -15); G.cam.dist = 420; G.cam.lastF = null; G.cam.focus = null; G.cam.fw = 0;
   $('side').classList.remove('atk'); show('rbox', true); $('hpw').querySelector('small').textContent = 'سلامة القاعدة'; $('left').previousElementSibling.textContent = 'أهداف متبقية'; $('hint').innerHTML = HINT0; $('hp').style.background = 'var(--ok)'; batObjs.forEach(o => o.visible = true);
 }
@@ -1026,7 +1026,7 @@ function startBattle() {
   if (G.pvp) G.assets.forEach(a => { a.hp = a.hp0 = ({ 'مبنى القيادة': 3, 'حظيرة الطائرات 1': 2, 'حظيرة الطائرات 2': 2, 'حظيرة الطائرات 3': 2 })[a.name] || 1; });
   G.aSel = G.eA.find(a => a.name === L.goals[0]);
   G.foeView = false; $('marks').classList.remove('foe'); $('foep').innerHTML = '👁 قاعدة الخصم'; $('app').classList.add('batm');
-  $('side').classList.add('atk'); show('rbox', false); show('mtools', false); show('mapbox', false); show('homep', true); show('foep', true); show('zoomb', true); show('menu', false); show('result', false);
+  $('side').classList.add('atk'); show('rbox', false); show('mtools', false); show('mapbox', false); show('homep', true); show('foep', true); show('zoomq', true); show('menu', false); show('result', false);
   $('hpw').querySelector('small').textContent = 'قاعدة الخصم';
   if (G.pvp) { NET.sent = false; NET.last = performance.now(); NET.stT = 0; $('mname').textContent = `جولة ${NET.sc.me + NET.sc.foe + 1} · أنت ${NET.sc.me} – ${NET.sc.foe} ${foeNm()}`; labelSet(LBL.foe, NET.peerNm ? 'قاعدة ' + NET.peerNm : 'قاعدة الخصم'); banner('ابدأ القتال!', 'دمّر مركز قيادة خصمك ورادار إنذاره', '', 3.2); battleIntro(); uiBat(); return; }
   battleIntro(); log(`المعركة ${G.stage + 1} من 5: ${ST.name}`); $('mname').textContent = `${G.stage + 1}/5 · ${ST.name}`; banner(`المعركة ${G.stage + 1} من 5`, ST.boss ? 'دمّر المخبأ المحصّن، وانتبه لرشقاته الانتقامية' : ST.name, ST.boss ? 'warn' : '', 3.2); uiBat();

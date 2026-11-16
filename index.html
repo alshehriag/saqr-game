@@ -190,7 +190,7 @@ button{min-height:30px}
 .pvprow{display:flex;gap:6px;margin-top:10px}.pvprow input{flex:1;font-size:22px;text-align:center;letter-spacing:6px;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#fff}
 .pvprow button{padding:0 18px;border-radius:10px;font-weight:900}.pvpcode{font-size:46px;font-weight:900;letter-spacing:12px;text-align:center;color:var(--sand);margin:6px 0 10px}
 #pvp .card{max-height:92vh;overflow:auto}#pvp h5{margin:10px 0 5px;font-size:12.5px;color:var(--mut)}.pch{display:flex;flex-wrap:wrap;gap:5px}.pch button{padding:6px 10px;border-radius:9px;font-size:12.5px;border:1px solid var(--line);background:rgba(255,255,255,.05)}.pch button.on{background:rgba(230,190,110,.22);border-color:var(--sand);color:#fff;font-weight:900}.pch button i{display:block;font-style:normal;font-size:10.5px;opacity:.75}#pvpset.lock{opacity:.55;pointer-events:none}.pvpfoe{margin:10px 0;padding:8px 10px;border-radius:10px;background:rgba(110,165,255,.1);border:1px solid rgba(110,165,255,.35);font-size:12.5px;line-height:1.7}.pvpcode{font-size:34px!important;margin:0!important}.pvpst{font-size:13.5px;min-height:20px;margin:10px 0 6px;color:var(--mut)}.pvpst.ok{color:#7be08f}.pvpst.bad{color:#ff7a66}.pvpx{width:100%;padding:10px;border-radius:10px;margin-top:4px}
-#zoomb{position:absolute;right:6px;top:calc(env(safe-area-inset-top) + 192px);z-index:2;display:flex;flex-direction:column;gap:6px}#zoomb button{width:46px;height:46px;border-radius:12px;font-size:26px;font-weight:900;line-height:1;background:rgba(10,14,20,.78);border:1px solid var(--line);color:#fff}#zoomb button:active{background:rgba(230,190,110,.35)}
+#zoomq{position:absolute;right:6px;top:calc(env(safe-area-inset-top) + 134px);z-index:2;display:flex;flex-direction:column;gap:6px}#zoomq button{width:46px;height:46px;border-radius:12px;font-size:26px;font-weight:900;line-height:1;background:rgba(10,14,20,.78);border:1px solid var(--line);color:#fff}#zoomq button:active{background:rgba(230,190,110,.35)}
 #foep{position:absolute;right:6px;top:calc(env(safe-area-inset-top) + 82px);z-index:2;font-size:15px;font-weight:900;padding:11px 16px;background:rgba(255,91,69,.18);border-color:rgba(255,91,69,.55)}
 #mapbox{width:132px!important}#mapbox.big{width:min(92vw,420px)!important}#emttl{cursor:pointer;font-size:10.5px!important;color:var(--sand)}
 #mapbox:not(.big) #pzout,#mapbox:not(.big) #pzin,#mapbox:not(.big) #pzrs{display:none}#mapbox.mini #emap{display:none}#mapbox.mini{width:auto!important}
@@ -221,7 +221,7 @@ button{min-height:30px}
       <div id="legend"><span><i style="color:var(--unk)"></i>مجهول</span><span><i style="color:var(--bad);transform:rotate(45deg)"></i>معادٍ</span><span><i style="color:var(--ok);border-radius:50%"></i>صديق</span><span><i style="color:#9fe8ff;border-radius:50%;width:5px;height:5px;background:#9fe8ff"></i>صاروخنا</span></div></div>
     <div id="mapbox" class="hid"><div class="rtop"><span id="emttl">● قاعدة الخصم</span><span class="pzb"><button id="pzout">−</button><button id="pzin">+</button><button id="pzrs">⌖</button><button id="pipsz">⤢</button></span></div><canvas id="emap"></canvas></div>
     <button class="pill hid" id="homep"></button>
-    <button class="pill hid" id="foep">👁 قاعدة الخصم</button><div id="zoomb" class="hid"><button id="zplus">+</button><button id="zminus">−</button></div>
+    <button class="pill hid" id="foep">👁 قاعدة الخصم</button><div id="zoomq" class="hid"><button id="zplus">+</button><button id="zminus">−</button></div>
     <div id="radio"></div>
     <button id="wave" class="hid"><b>موجة اعتراض</b><i></i></button>
     <div id="zoomb"><button id="camb" title="الكاميرا">🎥</button></div>
@@ -314,8 +314,8 @@ button{min-height:30px}
 <div id="result" class="ov hid"><div class="card"><h3 id="rt"></h3><p id="rs"></p><p id="rd"></p><div class="btns"><button id="rn" class="hid">المهمة التالية</button><button id="rr">إعادة</button><button id="rm">القائمة</button></div></div></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script>window.BUILD=15;fetch('./version.txt?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{t=parseInt(t)||0;if(t>window.BUILD&&!new RegExp('[?&]v='+t+'(&|$)').test(location.search))location.replace(location.pathname+'?v='+t)}).catch(()=>{})</script>
-<script src="./js/net-config.js?v=15"></script>
-<script type="module" src="./js/main.js?v=15"></script>
+<script>window.BUILD=16;fetch('./version.txt?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{t=parseInt(t)||0;if(t>window.BUILD&&!new RegExp('[?&]v='+t+'(&|$)').test(location.search))location.replace(location.pathname+'?v='+t)}).catch(()=>{})</script>
+<script src="./js/net-config.js?v=16"></script>
+<script type="module" src="./js/main.js?v=16"></script>
 </body>
 </html>
