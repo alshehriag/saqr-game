@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js?v=7';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=7';
-import { buildFX } from './fx.js?v=7';
+import { buildTextures } from './tex.js?v=8';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=8';
+import { buildFX } from './fx.js?v=8';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
@@ -92,7 +92,7 @@ function boomFar(k = 1, delay = 0) { if (!A.ctx) return; const c = A.ctx, t = c.
   const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9 * k, t + 0.08); g.gain.exponentialRampToValueAtTime(0.001, t + 3); s.connect(f); f.connect(g); g.connect(A.master); s.start(t); s.stop(t + 3.1); }
 function squelch() { if (!A.ctx) return; const c = A.ctx, t = c.currentTime, w = c.createBufferSource(); w.buffer = A.white; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2200; f.Q.value = 2; const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.07, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18); w.connect(f); f.connect(g); g.connect(A.master); w.start(t); w.stop(t + 0.2); }
 let radioT = -99, radioHide = 0, callT = -99;
-function radio(text, speak = true) { if (G.mode !== 'bat' || G.time - radioT < 4) return; radioT = G.time; squelch(); const r = $('radio'); r.textContent = text; r.classList.add('on'); clearTimeout(radioHide); radioHide = setTimeout(() => r.classList.remove('on'), 2600); if (speak && G.time - callT > 2) say(text); }
+function radio(text, speak = true) { if (G.mode !== 'bat' || G.time - radioT < 4) return; radioT = G.time; squelch(); const r = $('radio'); r.textContent = text; r.classList.add('on'); clearTimeout(radioHide); radioHide = setTimeout(() => r.classList.remove('on'), 2600); { const id = voFor(text); if (id) voPlay(id); else if (speak && G.time - callT > 2) say(text); } }
 function hitCall(destroyed) { if (G.time - callT < 2.5) return; callT = G.time; const L = destroyed ? ['دمّرناه! كفو!', 'راح عليهم!', 'تم التدمير!'] : ['أصبناه!', 'إصابة مباشرة!', 'في الصميم!']; say(L[(Math.random() * L.length) | 0]); }
 function rocketSnd(k = 1) { if (!A.ctx) return; const c = A.ctx, t = c.currentTime, s = c.createBufferSource(); s.buffer = A.brown; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 0.6; f.frequency.setValueAtTime(240, t); f.frequency.exponentialRampToValueAtTime(900, t + 1.6); const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5 * k, t + 0.08); g.gain.exponentialRampToValueAtTime(0.001, t + 2.2); s.connect(f); f.connect(g); g.connect(A.master); s.start(t); s.stop(t + 2.3); }
 function beep(f = 880, d = 0.08, v = 0.1, delay = 0) { if (!A.ctx) return; const c = A.ctx, t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g); g.connect(A.master); o.start(t); o.stop(t + d + 0.02); }
@@ -104,7 +104,24 @@ function radarAlarm() {
 let arVoice = null; const pickVoice = () => { try { const sc = v => (/^ar[-_]SA/i.test(v.lang) ? 4 : 0) + (/enhanced|premium|natural|neural|محسّن|محسن/i.test(v.name) ? 8 : 0) + (/google|microsoft/i.test(v.name) ? 2 : 0); arVoice = speechSynthesis.getVoices().filter(v => /^ar/i.test(v.lang)).sort((a, b) => sc(b) - sc(a))[0] || null; } catch (e) { } };
 try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; } catch (e) { }
 const SAYMAP = { 'الرادار يعمل': 'الرادار شغّال! يالله يا شباب، عيونكم على الشاشة!', 'هدف معادٍ': 'انتبه! هدف معادي!', 'تم الاعتراض': 'أصبناه! كفو والله!', 'تهديد وشيك': 'انتبهوا! تهديد قريب، تحركوا بسرعة!', 'أُصيبت القاعدة': 'انضربت القاعدة! شدّوا حيلكم!', 'إصابة في القاعدة': 'انضربت القاعدة! شدّوا حيلكم!', 'سقط داخل القاعدة': 'طاح داخل القاعدة!', 'السماء آمنة': 'السما نظيفة! كفو عليكم يا أبطال!', 'فشلت المهمة': 'ما قدرنا هالمرة، نعيدها ونرجع أقوى!', 'خطّط الضربة': 'جهّز ضربتك يا بطل!', 'انطلقت الضربة': 'أطلقنا! يالله يا شباب!', 'دُمّر الهدف': 'دمّرناه! كفو!', 'نجحت الضربة': 'الضربة نجحت! كفو عليك!', 'فشلت الضربة': 'ما وصلنا للهدف، نعيد الخطة!', 'تعطّلت منظومة': 'عطّلنا منظومتهم!', 'أسقطتَ هدفاً صديقاً': 'لا لا! هذا صديق!', 'دُمّر رادار الإنذار المبكر': 'راح رادار الإنذار! انتبهوا!', 'هدف ثانٍ': 'هدف ثاني جاي!', 'تم': '' };
-function say(text) { text = SAYMAP[text] ?? text; if (!text) return; if (!A.on || !arVoice) return; try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.voice = arVoice; u.lang = arVoice.lang; u.rate = 1.04; u.pitch = 1; u.volume = 1; speechSynthesis.speak(u); } catch (e) { } }
+// ---------- أصوات المذيع المسجّلة (Google AI Studio · Puck بلهجة سعودية)
+const VOIDS = ['welcome','start','c3','c2','c1','fire','hostile','radar','hit1','hit2','hit3','kill1','kill2','intercept','threat','basehit','close','wave','ballistic','cruise','drones','revenge','jetgo','jetbombs','jetflare','jetlost','jetback','enemyjet','win','lose','campaign','ready','friend'];
+const VO = {}; let voLoading = false, voSrc = null;
+function voLoad() { if (voLoading || !A.ctx) return; voLoading = true; VOIDS.forEach(id => fetch(`./vo/${id}.mp3?v=1`).then(r => r.ok ? r.arrayBuffer() : null).then(b => b && new Promise((ok, no) => A.ctx.decodeAudioData(b, ok, no))).then(buf => { if (buf) VO[id] = buf; }).catch(() => {})); }
+function voPlay(id, vol = 1) { if (!A.on || !A.ctx || !VO[id]) return false; try { if (voSrc) { try { voSrc.stop(); } catch (e) { } } speechSynthesis.cancel(); } catch (e) { } const s = A.ctx.createBufferSource(), g = A.ctx.createGain(); s.buffer = VO[id]; g.gain.value = 1.15 * vol; s.connect(g); g.connect(A.master); s.start(); voSrc = s; return true; }
+const VOTEXT = { 'هدف معادٍ': 'hostile', 'تم الاعتراض': 'intercept', 'تهديد وشيك': 'threat', 'أُصيبت القاعدة': 'basehit', 'إصابة في القاعدة': 'basehit', 'السماء آمنة': 'win', 'فشلت المهمة': 'lose', 'دُمّر الهدف': 'kill1', 'الرادار يعمل': 'radar', 'أسقطتَ هدفاً صديقاً': 'friend', 'كفو! انتصرنا في الحملة': 'campaign', 'فاتنا بشعرة!': 'close', 'هدف ثانٍ': 'hostile', 'دمّرناه! كفو!': 'kill1', 'راح عليهم!': 'kill2', 'تم التدمير!': 'kill1', 'أصبناه!': 'hit1', 'إصابة مباشرة!': 'hit2', 'في الصميم!': 'hit3', 'نجحت الضربة': 'win', 'فشلت الضربة': 'lose' };
+const VORADIO = [[/^كل المنصات/, 'wave'], [/أقلعت/, 'jetgo'], [/القنابل انطلقت/, 'jetbombs'], [/المشاعل/, 'jetflare'], [/^فقدنا/, 'jetlost'], [/رجعت سالمة/, 'jetback'], [/طائرة معادية|طائرة الخصم/, 'enemyjet'], [/رشقة انتقامية/, 'revenge'], [/باليستي/, 'ballistic'], [/كروز/, 'cruise'], [/مسيّرات/, 'drones'], [/^منصة .* جاهزة/, 'ready']];
+const voFor = t => VOTEXT[t] || (VORADIO.find(([r]) => r.test(t)) || [])[1];
+let introT = [];
+function battleIntro() { introT.forEach(clearTimeout); introT = []; if (!A.ctx) return; siren(); const at = (ms, f) => introT.push(setTimeout(() => { if (G.state === 'play' && G.mode === 'bat') f(); }, ms));
+  at(700, () => voPlay('start')); [['3', 'c3'], ['2', 'c2'], ['1', 'c1']].forEach(([n, id], i) => at(5600 + i * 1000, () => { voPlay(id); banner(n, 'استعد', '', 0.9, false); beep(660, 0.12, 0.12); }));
+  at(8600, () => { voPlay('fire'); banner('إطلاق!', '', 'ok', 1.2, false); beep(990, 0.25, 0.14); }); }
+function siren() { if (!A.ctx) return; const c = A.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter(); o.type = 'sawtooth'; f.type = 'lowpass'; f.frequency.value = 1800;
+  o.frequency.setValueAtTime(420, t); for (let i = 0; i < 3; i++) { o.frequency.linearRampToValueAtTime(880, t + i * 0.9 + 0.45); o.frequency.linearRampToValueAtTime(420, t + i * 0.9 + 0.9); }
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.15); g.gain.setValueAtTime(0.09, t + 2.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.8); o.connect(f); f.connect(g); g.connect(A.master); o.start(t); o.stop(t + 2.9); }
+let welcomed = false;
+addEventListener('pointerdown', () => { audioInit(); voLoad(); if (!welcomed) { welcomed = true; let n = 0; const tryW = () => { if (G.state !== 'menu' && G.state !== undefined) return; if (VO.welcome) voPlay('welcome'); else if (n++ < 30) setTimeout(tryW, 200); }; setTimeout(tryW, 250); } }, { capture: true });
+function say(text) { { const id = voFor(SAYMAP[text] !== undefined ? text : text) || voFor(SAYMAP[text] || ''); if (id && voPlay(id)) return; } text = SAYMAP[text] ?? text; if (!text) return; if (!A.on || !arVoice) return; try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.voice = arVoice; u.lang = arVoice.lang; u.rate = 1.04; u.pitch = 1; u.volume = 1; speechSynthesis.speak(u); } catch (e) { } }
 
 // ---------- قاعدة المنظومات: أسماء مستوحاة، وأرقام لعبة مقرّبة (ليست بيانات حقيقية)
 const TIER = { upper: { t: 'طبقة عليا', len: 6.4, r: 0.2, color: 0xe6e6e2, model: 'octo' }, mid: { t: 'بعيد ومتوسط', len: 5.6, r: 0.22, color: 0xd9d7cf, model: 'quad' }, short: { t: 'قصير المدى', len: 3.6, r: 0.16, color: 0xcfc8b0, model: 'quadS' }, gun: { t: 'مدفع', model: 'gun' }, beam: { t: 'طاقة موجّهة', model: 'beam' } };
@@ -978,8 +995,8 @@ function startBattle() {
   G.foeView = false; $('marks').classList.remove('foe'); $('foep').innerHTML = '👁 قاعدة الخصم'; $('app').classList.add('batm');
   $('side').classList.add('atk'); show('rbox', false); show('mtools', false); show('mapbox', true); show('homep', true); show('foep', true); show('menu', false); show('result', false);
   $('hpw').querySelector('small').textContent = 'قاعدة الخصم';
-  if (G.pvp) { NET.sent = false; NET.last = performance.now(); NET.stT = 0; $('mname').textContent = 'نفرين · غرفة ' + NET.code; banner('ابدأ القتال!', 'دمّر مركز قيادة خصمك ورادار إنذاره', '', 3.2); say('بسم الله، المعركة بدأت'); uiBat(); return; }
-  log(`المعركة ${G.stage + 1} من 5: ${ST.name}`); $('mname').textContent = `${G.stage + 1}/5 · ${ST.name}`; banner(`المعركة ${G.stage + 1} من 5`, ST.boss ? 'دمّر المخبأ المحصّن، وانتبه لرشقاته الانتقامية' : ST.name, ST.boss ? 'warn' : '', 3.2); uiBat();
+  if (G.pvp) { NET.sent = false; NET.last = performance.now(); NET.stT = 0; $('mname').textContent = 'نفرين · غرفة ' + NET.code; banner('ابدأ القتال!', 'دمّر مركز قيادة خصمك ورادار إنذاره', '', 3.2); battleIntro(); uiBat(); return; }
+  battleIntro(); log(`المعركة ${G.stage + 1} من 5: ${ST.name}`); $('mname').textContent = `${G.stage + 1}/5 · ${ST.name}`; banner(`المعركة ${G.stage + 1} من 5`, ST.boss ? 'دمّر المخبأ المحصّن، وانتبه لرشقاته الانتقامية' : ST.name, ST.boss ? 'warn' : '', 3.2); uiBat();
 }
 const JSORT = { l: 2, m: 3, h: 4 };
 function launchJet() {
