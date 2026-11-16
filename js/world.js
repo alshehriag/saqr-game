@@ -297,8 +297,8 @@ export function buildWorld(scene, renderer, T, Q) {
       for (const sx of [-1, 1]) for (let i = 0; i < 12; i++) { d.position.set(sx * (R + 22) + sx * (i % 2) * 3, 0.55, gap[0] + 4 + Math.floor(i / 2) * 6.5); d.rotation.y = Math.PI / 2 + (i % 2 ? 0.3 : -0.3); d.updateMatrix(); jm.setMatrixAt(k++, d.matrix); }
       jm.castShadow = jm.receiveShadow = true; B.add(jm); }
     // نخيل وإنارة على جانب الطريق
-    for (let i = 0; i < Q.palms; i++) { const x = -230 + i * (460 / Q.palms) + Math.random() * 6, p = palm(6 + Math.random() * 4); p.position.set(x, 0, (i % 2 ? 69 : 51) + Math.random() * 2); B.add(p); }
-    for (let i = 0; i < 6; i++) { const p = palm(6 + Math.random() * 3); p.position.set(40 + Math.random() * 40, 0, 104 + Math.random() * 14); B.add(p); }
+    for (let i = 0; i < Q.palms; i++) { const x = -230 + i * (460 / Q.palms) + Math.random() * 6, p = palm(6 + Math.random() * 4); p.userData.palm = 1; p.position.set(x, 0, (i % 2 ? 69 : 51) + Math.random() * 2); B.add(p); }
+    for (let i = 0; i < 6; i++) { const p = palm(6 + Math.random() * 3); p.userData.palm = 1; p.position.set(40 + Math.random() * 40, 0, 104 + Math.random() * 14); B.add(p); }
     for (let i = -4; i <= 4; i++) lampPost(B, i * 50 + 12, 53.5, 0);
     // مركبات ومنظومات
     const put = (o, x, z, ry) => { o.position.set(x, 0, z); o.rotation.y = ry; B.add(o); return o; };
@@ -307,6 +307,28 @@ export function buildWorld(scene, renderer, T, Q) {
     col(70, -8, 6, 4, 'sys'); col(122, -18, 6, 5, 'sys'); col(52, 22, 5, 5, 'sys');
     for (let i = 0; i < 14; i++) { const b = box(2.4, 0.9, 0.6, MT.concrete, -14 + i * 2.6, 0.45, 28); B.add(b); }
     for (let i = 0; i < 5; i++) for (let j = 0; j < 2; j++) B.add(box(2.4, 2.5, 6, [MT.red, MT.olive, MT.tan, MT.steel][(i + j) % 4], -150 + i * 3.2, 1.25 + (i % 2 && j ? 2.5 : 0), 20 + j * 7));
+    const bermM = MT.berm, flag = (x, z, c) => { const p = cyl(0.12, 0.16, 16, MT.steel, 8); p.position.set(x, 8, z); B.add(p); const f = new THREE.Mesh(new THREE.PlaneGeometry(7, 4.2), new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, side: THREE.DoubleSide })); f.position.set(x + 3.6, 13.6, z); B.add(f); };
+    if (enemy) {
+      // قاعدة الخصم: مخطط معكوس، أرضية حصوية داكنة، سواتر حول الحظائر، صخور وسلسلة تلال خلفها، بلا نخيل
+      B.children.forEach(c => { if (c.isInstancedMesh) return; c.position.x *= -1; c.rotation.y *= -1; });
+      W.colliders.forEach(c => { if (c.enemy && !c._m) { c.x = origin.x - (c.x - origin.x); c._m = 1; } });
+      B.children.filter(c => c.userData && c.userData.palm).forEach(c => { c.visible = false; });
+      const gv = MT.gravel || (MT.gravel = mat({ color: 0xf0dcae, map: T.sand, roughness: 1, metalness: 0 })); flat(432, 432, gv, 0, 0, 0.03, 18, 18);
+      for (const sx of [103, 137]) { const r = box(3, 5, 82, bermM, sx, 2.5, -32); B.add(r); } B.add(box(37, 5, 3, bermM, 120, 2.5, -74));
+      const rk = MT.rock || (MT.rock = mat({ color: 0x75685a, map: T.sand, roughness: 1, metalness: 0 }));
+      { const n = 54, im = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), rk, n), d = new THREE.Object3D(); for (let i = 0; i < n; i++) { const a = Math.PI * (0.94 + (i / n) * 1.12) + Math.random() * 0.1, r = 262 + Math.random() * 120, s = 4 + Math.random() * 11; d.position.set(Math.cos(a) * r, s * 0.25, Math.sin(a) * r * 0.95 - 20); d.scale.set(s, s * (0.5 + Math.random() * 0.5), s * (0.7 + Math.random() * 0.6)); d.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3); d.updateMatrix(); im.setMatrixAt(i, d.matrix); } im.castShadow = im.receiveShadow = true; B.add(im); }
+      { const n = 9, im = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 7), rk, n), d = new THREE.Object3D(); for (let i = 0; i < n; i++) { const hgt = 60 + Math.random() * 80, wd = 110 + Math.random() * 90; d.position.set(-520 + i * 130 + Math.random() * 40, hgt / 2 - 4, -430 - Math.random() * 120); d.scale.set(wd, hgt, wd * (0.7 + Math.random() * 0.5)); d.rotation.set(0, Math.random() * 3, 0); d.updateMatrix(); im.setMatrixAt(i, d.matrix); } im.receiveShadow = true; B.add(im); }
+      flag(18, 14, 0xb3261e);
+    } else {
+      // قاعدتنا: مهبط مروحيات، خزان ماء، سارية علم، ونخيل أكثر
+      const pad = new THREE.Mesh(new THREE.CircleGeometry(17, 40), MT.concrete); pad.rotation.x = -Math.PI / 2; pad.position.set(158, 0.08, 136); pad.receiveShadow = true; B.add(pad);
+      const wh = new THREE.MeshStandardMaterial({ color: 0xf2efe2, roughness: 0.9 }); [[-4.5, 0, 1.6, 12], [4.5, 0, 1.6, 12], [0, 0, 9, 1.6]].forEach(([x, z, sx, sz]) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(sx, sz), wh); m.rotation.x = -Math.PI / 2; m.position.set(158 + x, 0.11, 136 + z); B.add(m); });
+      const ring = new THREE.Mesh(new THREE.RingGeometry(14.2, 15.2, 40), wh); ring.rotation.x = -Math.PI / 2; ring.position.set(158, 0.1, 136); B.add(ring);
+      const wt = cyl(5.5, 5.5, 6, MT.white, 18); wt.position.set(-172, 17, 128); B.add(wt); const wc = cyl(0.3, 5.6, 1.6, MT.white, 18); wc.position.set(-172, 20.8, 128); B.add(wc);
+      [[-4, -4], [4, -4], [-4, 4], [4, 4]].forEach(([x, z]) => { const l = cyl(0.22, 0.3, 14, MT.steel, 6); l.position.set(-172 + x, 7, 128 + z); B.add(l); });
+      flag(36, 104, 0x1f8a4c);
+      [[-190, -180], [-180, -192], [188, -184], [176, 190], [190, 176], [-186, 186], [-196, 170]].forEach(([x, z]) => { const p = palm(6 + Math.random() * 4); p.position.set(x, 0, z); B.add(p); });
+    }
     return { group: B, sys };
   };
 

@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js?v=13';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=13';
-import { buildFX } from './fx.js?v=13';
+import { buildTextures } from './tex.js?v=14';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=14';
+import { buildFX } from './fx.js?v=14';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
@@ -519,8 +519,10 @@ function finish(win) {
 // ---------- الكاميرا
 let shake = 0; const GROUND = new V3(30, 210, 400); Object.assign(G.cam, { gy: 0, gp: -0.42, gfov: 66 });
 const VIEWS = { mid: { p: [30, 30, 205], gp: -0.2, fov: 62 }, eye: { p: [20, 2.4, 190], gp: 0.08, fov: 64 }, tower: { p: [30, 48, 330], gp: -0.1, fov: 64 }, high: { p: [30, 210, 400], gp: -0.42, fov: 66 } };
-try { G.view = localStorage.getItem('saqrView') || 'mid'; } catch (e) { G.view = 'mid'; }
-function setView(k) { const v = VIEWS[k] || VIEWS.mid; G.view = VIEWS[k] ? k : 'mid'; GROUND.set(...v.p); Object.assign(G.cam, { gy: 0, gp: v.gp, gfov: v.fov }); try { localStorage.setItem('saqrView', G.view); } catch (e) {} viewUI(); }
+try { G.view = localStorage.getItem('saqrView2') || 'high'; } catch (e) { G.view = 'high'; }
+G.fv = { x: 0, z: 0, k: 1 };
+function topFit() { const asp = VW / Math.max(1, VH), t = Math.tan(30 * Math.PI / 180), d = Math.max(250 / (t * Math.min(asp, 1.7)), 270 / t) * 1.04, p = 0.95; return { p: [0, d * Math.sin(p), 25 + d * Math.cos(p)], gp: -p, fov: 60 }; }
+function setView(k) { if (!VIEWS[k]) k = 'high'; const v = k === 'high' ? topFit() : VIEWS[k]; G.view = k; GROUND.set(...v.p); Object.assign(G.cam, { gy: 0, gp: v.gp, gfov: v.fov }); try { localStorage.setItem('saqrView2', G.view); } catch (e) {} viewUI(); }
 function viewUI() { document.querySelectorAll('#campnl [data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === G.view)); $('camh').textContent = Math.round(GROUND.y) + ' م'; }
 function autoLook(rdt) {
   let p = null, best = 1e9;
@@ -547,7 +549,7 @@ function updateCamera(rdt) {
     camera.position.lerp(GROUND, c.t < 0.05 ? 1 : Math.min(1, rdt * 4));
     const cp = Math.cos(c.gp); c.look.copy(camera.position).add(tA.set(Math.sin(c.gy) * cp, Math.sin(c.gp), -Math.cos(c.gy) * cp).multiplyScalar(100)); fov = c.gfov; F.post.heat = 0;
   } else if (c.mode === 'foe') {
-    camera.position.lerp(tB.set(EC.x + 20, 270, EC.z + 480), c.t < 0.05 ? 1 : Math.min(1, rdt * 2.5)); c.look.set(EC.x + 5, 0, EC.z - 25); fov = 50; F.post.heat = 0;
+    camera.position.lerp(tB.set(EC.x + G.fv.x, 330 / G.fv.k, EC.z + G.fv.z + 40 + 520 / G.fv.k), c.t < 0.05 ? 1 : Math.min(1, rdt * 5)); c.look.set(EC.x + G.fv.x, 0, EC.z + 40 + G.fv.z); fov = 54; F.post.heat = 0;
   } else if (c.mode === 'cine' && G.cine) {
     const p = G.cine.p, a = 0.6 + c.t * 0.16, R = Math.max(95, 170 - c.t * 10); camera.position.set(p.x + Math.sin(a) * R, 40 + c.t * 4, p.z + Math.cos(a) * R); c.look.set(p.x, 12 + c.t * 2, p.z); fov = 44; F.post.focus = 1; F.post.focusPos.copy(c.look); F.post.heat = 0;
   } else if (c.mode === 'blast') { c.look.lerp(G.blast, Math.min(1, rdt * 5)); fov = 50; if (c.t > 2.6) toBase(); F.post.heat = 0; }
@@ -646,14 +648,25 @@ function buildSysButtons() {
 }
 
 // ---------- الإدخال
-let drag = null; const pts = new Map(); let pinch0 = 0, dist0 = 0;
-canvas.addEventListener('pointerdown', e => { pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); dist0 = G.cam.dist; drag = null; } });
-addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]); if (pts.size === 2 && pinch0) { const [a, b] = [...pts.values()]; G.cam.dist = M.clamp(dist0 * pinch0 / Math.max(20, Math.hypot(a[0] - b[0], a[1] - b[1])), 160, 2200); } });
-addEventListener('pointerup', e => { pts.delete(e.pointerId); if (pts.size < 2) pinch0 = 0; }); addEventListener('pointercancel', e => { pts.delete(e.pointerId); if (pts.size < 2) pinch0 = 0; });
-canvas.addEventListener('pointerdown', e => { audioInit(); if (pts.size > 1) return; drag = { x: e.clientX, y: e.clientY, yaw: G.cam.yaw, el: G.cam.el, gy: G.cam.gy, gp: G.cam.gp }; });
-addEventListener('pointermove', e => { if (drag && !pinch0 && G.cam.mode === 'ground') { G.lastDrag = performance.now(); G.cam.gy = drag.gy - (e.clientX - drag.x) * 0.004; G.cam.gp = M.clamp(drag.gp + (e.clientY - drag.y) * 0.003, -0.5, 0.9); return; } if (!drag || pinch0 || G.cam.mode !== 'base') return; G.cam.yaw = drag.yaw - (e.clientX - drag.x) * 0.005; G.cam.el = M.clamp(drag.el + (e.clientY - drag.y) * 0.004, 0.35, 1.45); });
-addEventListener('pointerup', () => drag = null);
-canvas.addEventListener('wheel', e => { e.preventDefault(); G.cam.dist = M.clamp(G.cam.dist * (e.deltaY > 0 ? 1.12 : 0.89), 160, 2200); }, { passive: false });
+let drag = null, pin = null; const pts = new Map();
+const gDir = (o) => { const c = G.cam, cp = Math.cos(c.gp); return o.set(Math.sin(c.gy) * cp, Math.sin(c.gp), -Math.cos(c.gy) * cp); };
+const gHit = () => { const s = Math.sin(-G.cam.gp); return s > 0.12 ? Math.min(1600, GROUND.y / s) : 220; };
+function gZoom(P0, r, L) { const T = gDir(tA).multiplyScalar(L || gHit()).add(P0), np = tB.copy(P0).sub(T).multiplyScalar(1 / r).add(T); if (np.y < 6 || np.y > 950 || np.z > 1300) return; GROUND.copy(np); G.view = 'custom'; viewUI(); }
+canvas.addEventListener('pointerdown', e => { audioInit(); pts.set(e.pointerId, [e.clientX, e.clientY]);
+  if (pts.size === 2) { const [a, b] = [...pts.values()]; pin = { d0: Math.max(20, Math.hypot(a[0] - b[0], a[1] - b[1])), my: (a[1] + b[1]) / 2, dist0: G.cam.dist, gp: G.cam.gp, P0: GROUND.clone(), L: gHit(), k0: G.fv.k }; drag = null; }
+  else if (pts.size === 1) drag = { x: e.clientX, y: e.clientY, yaw: G.cam.yaw, el: G.cam.el, gx: GROUND.x, gz: GROUND.z, fx: G.fv.x, fz: G.fv.z }; });
+addEventListener('pointermove', e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]); const c = G.cam;
+  if (pts.size === 2 && pin) { const [a, b] = [...pts.values()], r = Math.max(20, Math.hypot(a[0] - b[0], a[1] - b[1])) / pin.d0; G.lastDrag = performance.now();
+    if (c.mode === 'ground') gZoom(pin.P0, r, pin.L);
+    else if (c.mode === 'foe') G.fv.k = M.clamp(pin.k0 * r, 0.45, 5);
+    else c.dist = M.clamp(pin.dist0 / r, 160, 2200); return; }
+  if (!drag || pts.size !== 1) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (c.mode === 'ground') { G.lastDrag = performance.now(); const mpp = 2 * gHit() * Math.tan(c.gfov * Math.PI / 360) / Math.max(200, VH), s = Math.max(0.4, Math.sin(-c.gp)), cy = Math.cos(c.gy), sy = Math.sin(c.gy), rx = -dx * mpp, fz = dy * mpp / s;
+    GROUND.x = M.clamp(drag.gx + cy * rx + sy * fz, -800, 800); GROUND.z = M.clamp(drag.gz + sy * rx - cy * fz, -600, 1200); if (Math.abs(dx) + Math.abs(dy) > 6 && G.view !== 'custom') { G.view = 'custom'; viewUI(); } }
+  else if (c.mode === 'foe') { const mpp = 2 * (560 / G.fv.k) * Math.tan(25 * Math.PI / 180) / Math.max(200, VH); G.fv.x = M.clamp(drag.fx - dx * mpp, -380, 380); G.fv.z = M.clamp(drag.fz - dy * mpp * 1.7, -380, 380); }
+  else if (c.mode === 'base') { c.yaw = drag.yaw - dx * 0.005; c.el = M.clamp(drag.el + dy * 0.004, 0.35, 1.45); } });
+const pUp = e => { pts.delete(e.pointerId); pin = null; drag = null; if (pts.size === 1) { const [p] = [...pts.values()]; drag = { x: p[0], y: p[1], yaw: G.cam.yaw, el: G.cam.el, gx: GROUND.x, gz: GROUND.z, fx: G.fv.x, fz: G.fv.z }; } }; addEventListener('pointerup', pUp); addEventListener('pointercancel', pUp);
+canvas.addEventListener('wheel', e => { e.preventDefault(); const f = e.deltaY > 0 ? 1 / 1.14 : 1.14; if (G.cam.mode === 'ground') gZoom(tC.copy(GROUND), f); else if (G.cam.mode === 'foe') G.fv.k = M.clamp(G.fv.k * f, 0.45, 5); else G.cam.dist = M.clamp(G.cam.dist / f, 160, 2200); }, { passive: false });
 addEventListener('keydown', e => {
   if (e.repeat || G.state !== 'play') return; const t = G.sel, n = '12345'.indexOf(e.key);
   if (n >= 0) engage(SYSK[n]); else if (e.code === 'KeyD') toggleDbl(); else if (e.code === 'KeyA') selectAllHostile(); else if (e.code === 'KeyH' && t) classify(t, 'hostile', false); else if (e.code === 'KeyF' && t) classify(t, 'friend', false);
@@ -663,7 +676,7 @@ $('backb').onclick = toBase;
 $('camb').onclick = e => { e.stopPropagation(); const o = $('campnl').classList.toggle('hid'); $('camb').classList.toggle('on', !o); $('campnl').classList.toggle('gv', G.cam.mode === 'ground'); viewUI(); };
 $('camx').onclick = () => { show('campnl', false); $('camb').classList.remove('on'); };
 document.querySelectorAll('#campnl [data-v]').forEach(b => b.onclick = () => { setView(b.dataset.v); if (G.state === 'play' && G.mode === 'bat') toBase(); });
-$('cup').onclick = () => { GROUND.y = M.clamp(GROUND.y < 10 ? GROUND.y + 4 : GROUND.y * 1.5, 2, 420); G.view = 'custom'; viewUI(); };
+$('cup').onclick = () => { GROUND.y = M.clamp(GROUND.y < 10 ? GROUND.y + 4 : GROUND.y * 1.5, 2, 950); G.view = 'custom'; viewUI(); };
 $('cdn').onclick = () => { GROUND.y = M.clamp(GROUND.y <= 12 ? GROUND.y - 4 : GROUND.y / 1.5, 2, 420); G.view = 'custom'; viewUI(); };
 $('cfw').onclick = () => { GROUND.z = M.clamp(GROUND.z - 60, 120, 700); G.view = 'custom'; viewUI(); };
 $('cbk').onclick = () => { GROUND.z = M.clamp(GROUND.z + 60, 120, 700); G.view = 'custom'; viewUI(); };
@@ -736,6 +749,11 @@ $('rsz').onclick = () => { $('rbox').classList.toggle('big'); radarResize(); };
 
 // ---------- الوضع الهجومي: خطّط الضربة على قاعدة خصم يدافع آلياً
 const EC = new V3(ENEMY.x, 0, ENEMY.z);
+function groundLabel(text, x, z, col) { const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256; const g = cv.getContext('2d'); g.direction = 'rtl'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 150px "Tajawal","Noto Kufi Arabic","Segoe UI",Tahoma,sans-serif';
+  g.lineWidth = 14; g.strokeStyle = 'rgba(20,16,10,.75)'; g.strokeText(text, 512, 132); g.fillStyle = col; g.fillText(text, 512, 132); g.fillRect(60, 232, 904, 10); g.fillRect(60, 14, 904, 10);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; const m = new THREE.Mesh(new THREE.PlaneGeometry(190, 47.5), new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
+  m.rotation.x = -Math.PI / 2; m.position.set(x, Math.max(heightAt(x, z), heightAt(x - 90, z), heightAt(x + 90, z), 0) + 0.5, z); m.renderOrder = 2; scene.add(m); return m; }
+const LBL = { me: groundLabel('قاعدتي', 0, 268, '#eaf7e4'), foe: groundLabel('قاعدة الخصم', EC.x, EC.z + 268, '#ffd9cf') };
 const ATK = [
   { name: 'ضربة تمهيدية', time: 'day', nSys: 3, delay: 6, ch: 1, gap: 3, tries: 1, pkf: 0.5, reloads: 0, inv: { b: 6, c: 10, d: 16 }, goals: ['مركز القيادة'] },
   { name: 'قاعدة محصّنة', time: 'sunset', nSys: 4, delay: 4, ch: 1, gap: 2, tries: 1, pkf: 0.62, reloads: 1, inv: { b: 8, c: 12, d: 20 }, goals: ['مركز القيادة', 'رادار الإنذار المبكر'] },
@@ -752,7 +770,7 @@ function buildEnemyInfra() {
   const kids = W.enemy.group.children.filter(c => !(c.geometry && c.geometry.type === 'PlaneGeometry') && !c.isInstancedMesh && c.visible);
   const near = (x, z, r) => kids.filter(c => Math.hypot(c.position.x - x, c.position.z - z) < r);
   [['مركز القيادة', 0, 0, 19, 20, 3], ['حظيرة الطائرات 1', -120, -50, 18, 6, 2], ['حظيرة الطائرات 2', -120, -14, 18, 6, 2], ['حظيرة الطائرات 3', -84, 26, 18, 6, 2], ['رادار الإنذار المبكر', -58, -96, 9, 10, 1], ['برج المراقبة', -52, 34, 6, 4, 1], ['خزانات الوقود', 91, -63, 14, 6, 1], ['مبنى الإمداد', 60, 96, 15, 5, 1]]
-    .forEach(([name, x, z, r, val, hp]) => asset({ name, objs: near(x, z, r), x: EC.x + x, z: EC.z + z, r: r * 0.8, val, hp, hp0: hp, kind: 'infra', supply: name === 'مبنى الإمداد' || name === 'خزانات الوقود', flat: name.startsWith('حظيرة') }, G.eA));
+    .forEach(([name, x0, z, r, val, hp]) => { const x = -x0; asset({ name, objs: near(x, z, r), x: EC.x + x, z: EC.z + z, r: r * 0.8, val, hp, hp0: hp, kind: 'infra', supply: name === 'مبنى الإمداد' || name === 'خزانات الوقود', flat: name.startsWith('حظيرة') }, G.eA); });
   [['منصة باليستي 1', 'b', -170, 150, 'erector'], ['منصة باليستي 2', 'b', -120, 172, 'erector'], ['منصة كروز 1', 'c', 150, 168, 'quad'], ['منصة كروز 2', 'c', 192, 138, 'quad'], ['منصة مسيّرات 1', 'd', -45, 180, 'cargo'], ['منصة مسيّرات 2', 'd', 0, 192, 'cargo']]
     .forEach(([name, sub, x, z, kind]) => { const o = W.truck(W.mats.olive, kind); o.position.set(EC.x + x, 0, EC.z + z); o.rotation.y = Math.PI; if (kind === 'quad' && o.userData.pack) o.userData.pack.rotation.x = -0.5; compactGroup(o); scene.add(o);
       asset({ name, obj: o, x: EC.x + x, z: EC.z + z, r: 7, val: 6, hp: 1, hp0: 1, kind: 'eoff', sub }, G.eA); });
@@ -763,7 +781,7 @@ function buildEnemyBatteries(L) {
   const pick = (L.pick || []).filter(k => DB[k]).slice(0, 5), order = ['mid', 'short', 'gun', 'upper', 'short', 'beam', 'mid', 'gun', 'short'];
   if (!pick.length) for (const pool of [PRESETS[G.ePreset].l, Object.keys(DB)]) for (const t of order) { if (pick.length >= L.nSys) break; const k = pool.find(k => DB[k].tier === t && !pick.includes(k)); if (k) pick.push(k); }
   const pl = autoPlace(pick);
-  pick.forEach(k => { const S = G.eSys[k] = makeBattery(k, EC.x + pl[k][0], EC.z + pl[k][1], W.mats.olive, G.eA, eBat, L.reloads); S.key = k; });
+  pick.forEach(k => { const S = G.eSys[k] = makeBattery(k, EC.x - pl[k][0], EC.z + pl[k][1], W.mats.olive, G.eA, eBat, L.reloads); S.key = k; });
 }
 function clearAtk() {
   (G.jets || []).forEach(j => { scene.remove(j.obj); if (j.sam) scene.remove(j.sam.obj); }); G.jets = [];
@@ -1261,7 +1279,7 @@ const eUp = e => { const p = EP.get(e.pointerId); if (!p) return; EP.delete(e.po
 em.addEventListener('pointerup', eUp); em.addEventListener('pointercancel', eUp);
 em.addEventListener('wheel', e => { e.preventDefault(); pvZoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); }, { passive: false });
 $('pzin').onclick = () => pvZoom(1.4); $('pzout').onclick = () => pvZoom(1 / 1.4); $('pzrs').onclick = pvReset;
-function foeView(on) { G.foeView = on; $('marks').classList.toggle('foe', on); show('mapbox', !on && G.mode === 'bat'); $('foep').innerHTML = on ? '↩ قاعدتي' : '👁 قاعدة الخصم'; toBase(); }
+function foeView(on) { G.foeView = on; G.fv = { x: 0, z: 0, k: 1 }; $('marks').classList.toggle('foe', on); show('mapbox', !on && G.mode === 'bat'); $('foep').innerHTML = on ? '↩ قاعدتي' : '👁 قاعدة الخصم'; toBase(); }
 $('foep').onclick = () => { if (G.mode === 'bat' && G.state === 'play') foeView(!G.foeView); };
 $('emttl').onclick = () => { $('mapbox').classList.toggle('mini'); emT = 1; };
 function toggleView() { G.topView = !G.topView; G.cam.center.copy(HOMEC); G.cam.lastF = null; G.cam.focus = null; G.cam.fw = 0; toBase(); uiBat(); }
