@@ -1049,7 +1049,7 @@ function netLeave() { if (NET.r) { netSend('bye'); try { NET.r.leave && NET.r.le
 async function netOpen(code, host) {
   pvpStatus('جاري الاتصال…'); const base = await getRoom();
   if (!base) { pvpStatus(window.FBCFG ? 'ما قدرت أتصل بخادم اللعب. تأكد من الإنترنت وجرّب مرة ثانية.' : 'معركة النفرين تشتغل من رابط النسخة الأونلاين.', 'bad'); return false; }
-  NET.host = host; try { NET.r = await base.join('shihab-pvp-' + code); } catch (e) { NET.r = null; }
+  NET.host = host; try { NET.r = await base.join('saqr-pvp-' + code); } catch (e) { NET.r = null; }
   if (!NET.r) { pvpStatus('تعذّر دخول الغرفة', 'bad'); return false; }
   Object.assign(NET, { code, host, peer: null, peerSys: null, gotSt: false }); NET.r.on('g', (d) => netMsg(d && d.data && d.data.ty ? d.data : d));
   clearInterval(NET.iv); NET.iv = setInterval(() => { if (!NET.peer) netSend('hi', { sys: G.loadout, host }); else if (NET.host && G.goPending && !NET.gotSt) netSend('go', G.goPending); }, 1200);
