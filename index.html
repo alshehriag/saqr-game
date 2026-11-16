@@ -190,7 +190,8 @@ button{min-height:30px}
 .pvprow{display:flex;gap:6px;margin-top:10px}.pvprow input{flex:1;font-size:22px;text-align:center;letter-spacing:6px;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#fff}
 .pvprow button{padding:0 18px;border-radius:10px;font-weight:900}.pvpcode{font-size:46px;font-weight:900;letter-spacing:12px;text-align:center;color:var(--sand);margin:6px 0 10px}
 #pvp .card{max-height:92vh;overflow:auto}#pvp h5{margin:10px 0 5px;font-size:12.5px;color:var(--mut)}.pch{display:flex;flex-wrap:wrap;gap:5px}.pch button{padding:6px 10px;border-radius:9px;font-size:12.5px;border:1px solid var(--line);background:rgba(255,255,255,.05)}.pch button.on{background:rgba(230,190,110,.22);border-color:var(--sand);color:#fff;font-weight:900}.pch button i{display:block;font-style:normal;font-size:10.5px;opacity:.75}#pvpset.lock{opacity:.55;pointer-events:none}.pvpfoe{margin:10px 0;padding:8px 10px;border-radius:10px;background:rgba(110,165,255,.1);border:1px solid rgba(110,165,255,.35);font-size:12.5px;line-height:1.7}.pvpcode{font-size:34px!important;margin:0!important}.pvpst{font-size:13.5px;min-height:20px;margin:10px 0 6px;color:var(--mut)}.pvpst.ok{color:#7be08f}.pvpst.bad{color:#ff7a66}.pvpx{width:100%;padding:10px;border-radius:10px;margin-top:4px}
-#foep{position:absolute;right:6px;top:calc(env(safe-area-inset-top) + 82px);z-index:2;font-size:12px;padding:6px 10px;background:rgba(255,91,69,.18);border-color:rgba(255,91,69,.55)}
+#zoomb{position:absolute;right:6px;top:calc(env(safe-area-inset-top) + 192px);z-index:2;display:flex;flex-direction:column;gap:6px}#zoomb button{width:46px;height:46px;border-radius:12px;font-size:26px;font-weight:900;line-height:1;background:rgba(10,14,20,.78);border:1px solid var(--line);color:#fff}#zoomb button:active{background:rgba(230,190,110,.35)}
+#foep{position:absolute;right:6px;top:calc(env(safe-area-inset-top) + 82px);z-index:2;font-size:15px;font-weight:900;padding:11px 16px;background:rgba(255,91,69,.18);border-color:rgba(255,91,69,.55)}
 #mapbox{width:132px!important}#mapbox.big{width:min(92vw,420px)!important}#emttl{cursor:pointer;font-size:10.5px!important;color:var(--sand)}
 #mapbox:not(.big) #pzout,#mapbox:not(.big) #pzin,#mapbox:not(.big) #pzrs{display:none}#mapbox.mini #emap{display:none}#mapbox.mini{width:auto!important}
 #marks.foe .mk.tg:not(.goal):not(.sel) b{display:none}
@@ -220,7 +221,7 @@ button{min-height:30px}
       <div id="legend"><span><i style="color:var(--unk)"></i>مجهول</span><span><i style="color:var(--bad);transform:rotate(45deg)"></i>معادٍ</span><span><i style="color:var(--ok);border-radius:50%"></i>صديق</span><span><i style="color:#9fe8ff;border-radius:50%;width:5px;height:5px;background:#9fe8ff"></i>صاروخنا</span></div></div>
     <div id="mapbox" class="hid"><div class="rtop"><span id="emttl">● قاعدة الخصم</span><span class="pzb"><button id="pzout">−</button><button id="pzin">+</button><button id="pzrs">⌖</button><button id="pipsz">⤢</button></span></div><canvas id="emap"></canvas></div>
     <button class="pill hid" id="homep"></button>
-    <button class="pill hid" id="foep">👁 قاعدة الخصم</button>
+    <button class="pill hid" id="foep">👁 قاعدة الخصم</button><div id="zoomb" class="hid"><button id="zplus">+</button><button id="zminus">−</button></div>
     <div id="radio"></div>
     <button id="wave" class="hid"><b>موجة اعتراض</b><i></i></button>
     <div id="zoomb"><button id="camb" title="الكاميرا">🎥</button></div>
@@ -251,7 +252,7 @@ button{min-height:30px}
   <div class="about">لعبة قيادة دفاع وهجوم جوي ثلاثية الأبعاد بالعربي: تتابع الرادار، تعرّف الأهداف، وتدير منظوماتك وذخيرتك لحماية قاعدتك أو ضرب قاعدة الخصم.<b>فكرة وإشراف: عبدالغني الشهري</b></div>
   <button class="helpb" id="helpb">طريقة اللعب بالجوال</button>
   <div class="seg modes" id="s-mode"></div>
-  <div class="hid" id="ms-bat"><div class="row"><label>الذخيرة</label><div class="seg" id="s-ammo"></div></div><p class="mut" style="margin:6px 0 10px">دفاع قاعدتك آلي بآخر منظومات اخترتها. اضغط هدفاً عند الخصم ثم اضغط الذخيرة. تفوز بتدمير مركز القيادة ورادار الإنذار.</p><button class="pri bigb" id="batgo">ابدأ الحملة: 5 معارك</button><button class="bigb" id="pvpgo" style="margin-top:8px;background:rgba(110,165,255,.16);border:1px solid rgba(110,165,255,.55)">⚔ معركة نفرين (أونلاين)</button></div>
+  <div class="hid" id="ms-bat"><div class="row"><label>الذخيرة</label><div class="seg" id="s-ammo"></div></div><p class="mut" style="margin:6px 0 10px">دفاع قاعدتك آلي بآخر منظومات اخترتها. اضغط هدفاً عند الخصم ثم اضغط الذخيرة. تفوز بتدمير مركز القيادة ورادار الإنذار.</p><button class="pri bigb" id="batgo">ابدأ الحملة: 5 معارك</button><button class="bigb" id="pvpgo" style="margin-top:8px;background:linear-gradient(135deg,#2f6fe0,#1c4fb0);border:1px solid #7fb0ff;color:#fff;font-weight:900;box-shadow:0 4px 14px rgba(47,111,224,.45)">⚔ معركة نفرين (أونلاين)</button></div>
   <div class="ms hid" id="ms-atk"><button data-atk="0">ضربة تمهيدية<i>3 منظومات · دفاع بطيء</i></button><button data-atk="1">قاعدة محصّنة<i>4 منظومات · هدفان</i></button><button data-atk="2">القلعة<i>5 منظومات · 3 أهداف · ليل</i></button></div>
   <div class="ms" id="ms-def"><button data-go="0">نوبة النهار<i>10 أهداف · تمهيدية</i></button><button data-go="1">غروب مزدحم<i>15 هدفاً</i></button><button data-go="2">ليلة طويلة<i>21 هدفاً · رؤية ليلية</i></button></div>
   <ul class="how hid" id="how-atk">
@@ -306,15 +307,15 @@ button{min-height:30px}
   <div class="btns"><button id="helpx" class="pri">فهمت</button></div>
 </div></div>
 <div id="pvp" class="ov hid"><div class="card"><h3>⚔ معركة نفرين</h3><p class="mut">كل لاعب من جواله. واحد ينشئ غرفة ويعطي رقمها للثاني. يفوز اللي يدمّر مركز قيادة خصمه ورادار إنذاره أول.</p>
-<div id="pvp1"><button class="pri bigb" id="pvpnew">أنشئ غرفة</button><div class="pvprow"><input id="pvpcode" inputmode="numeric" maxlength="4" placeholder="رقم الغرفة"><button id="pvpjoin">ادخل</button></div></div>
+<div id="pvp1"><input id="pvpname" maxlength="12" placeholder="اسمك (يظهر لخصمك)" style="width:100%;font-size:16px;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#fff;margin-bottom:8px"><button class="pri bigb" id="pvpnew">أنشئ غرفة</button><div class="pvprow"><input id="pvpcode" inputmode="numeric" maxlength="4" placeholder="رقم الغرفة"><button id="pvpjoin">ادخل</button></div></div>
 <div id="pvp2" class="hid"><div class="pvpcode" id="pvpshow"></div><div id="pvpset"><h5>دولتك</h5><div class="pch" id="pvpcn"></div><h5>دفاعك <small id="pvpdn"></small></h5><div class="pch" id="pvpdf"></div><h5>أسلحتك</h5><div class="pch" id="pvppk"></div></div><div class="pvpfoe" id="pvpfoe"></div><button class="pri bigb" id="pvpstart" disabled>أنا جاهز</button></div>
 <p id="pvpst" class="pvpst"></p><button id="pvpx" class="pvpx">رجوع</button></div></div>
 <div id="upg" class="ov hid"><div class="card"><h3>اختر ترقية</h3><p class="mut" id="upgt"></p><div id="upgl"></div></div></div>
 <div id="result" class="ov hid"><div class="card"><h3 id="rt"></h3><p id="rs"></p><p id="rd"></p><div class="btns"><button id="rn" class="hid">المهمة التالية</button><button id="rr">إعادة</button><button id="rm">القائمة</button></div></div></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script>window.BUILD=14;fetch('./version.txt?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{t=parseInt(t)||0;if(t>window.BUILD&&!new RegExp('[?&]v='+t+'(&|$)').test(location.search))location.replace(location.pathname+'?v='+t)}).catch(()=>{})</script>
-<script src="./js/net-config.js?v=14"></script>
-<script type="module" src="./js/main.js?v=14"></script>
+<script>window.BUILD=15;fetch('./version.txt?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{t=parseInt(t)||0;if(t>window.BUILD&&!new RegExp('[?&]v='+t+'(&|$)').test(location.search))location.replace(location.pathname+'?v='+t)}).catch(()=>{})</script>
+<script src="./js/net-config.js?v=15"></script>
+<script type="module" src="./js/main.js?v=15"></script>
 </body>
 </html>

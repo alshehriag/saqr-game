@@ -256,7 +256,7 @@ export function buildWorld(scene, renderer, T, Q) {
   W.buildBase = (origin, enemy) => {
     const B = new THREE.Group(); B.position.copy(origin); scene.add(B);
     const paint = enemy ? MT.olive : MT.tan, col = (x, z, r, h, tag) => W.colliders.push({ x: origin.x + x, z: origin.z + z, r, h, tag, enemy });
-    const flat = (w, d, m, x, z, y = 0.06, rx = w / 7, ry = d / 7) => { const o = new THREE.Mesh(new THREE.PlaneGeometry(w, d), tiled(m, rx, ry)); o.rotation.x = -Math.PI / 2; o.position.set(x, y, z); o.receiveShadow = true; B.add(o); return o; };
+    const flat = (w, d, m, x, z, y = 0.06, rx = w / 7, ry = d / 7) => { const o = new THREE.Mesh(new THREE.PlaneGeometry(w, d), tiled(m, rx, ry)); o.rotation.x = -Math.PI / 2; o.position.set(x, y, z); o.receiveShadow = true; o.material.polygonOffset = true; o.material.polygonOffsetFactor = o.material.polygonOffsetUnits = -Math.round(y * 70); B.add(o); return o; };
     // طرق ومنصات
     flat(520, 11, MT.asphalt, 0, 60); flat(11, 380, MT.asphalt, -30, -10, 0.05); flat(11, 240, MT.asphalt, 95, -30, 0.05);
     flat(46, 46, MT.concrete, 0, 0, 0.09); flat(120, 70, MT.concrete, -105, -30, 0.07); flat(70, 50, MT.concrete, 96, -60, 0.07);
@@ -307,6 +307,11 @@ export function buildWorld(scene, renderer, T, Q) {
     col(70, -8, 6, 4, 'sys'); col(122, -18, 6, 5, 'sys'); col(52, 22, 5, 5, 'sys');
     for (let i = 0; i < 14; i++) { const b = box(2.4, 0.9, 0.6, MT.concrete, -14 + i * 2.6, 0.45, 28); B.add(b); }
     for (let i = 0; i < 5; i++) for (let j = 0; j < 2; j++) B.add(box(2.4, 2.5, 6, [MT.red, MT.olive, MT.tan, MT.steel][(i + j) % 4], -150 + i * 3.2, 1.25 + (i % 2 && j ? 2.5 : 0), 20 + j * 7));
+    { const S = 1.25, CL = [[60, 96, 16], [91, -65, 15], [-144, 23.5, 12], [3, 28, 20]]; // تكبير المباني والمعدات
+      B.children.forEach(c => { if (c.isInstancedMesh || (c.userData && c.userData.palm)) return; const gt = c.geometry && c.geometry.type; if (gt && gt !== 'BoxGeometry' && gt !== 'CylinderGeometry') return;
+        const cl = CL.find(([x, z, r]) => Math.hypot(c.position.x - x, c.position.z - z) < r); if (!cl && !c.isGroup) return; if (gt === 'BoxGeometry' && !cl) return;
+        if (cl) { c.position.x = cl[0] + (c.position.x - cl[0]) * S; c.position.z = cl[1] + (c.position.z - cl[1]) * S; } c.position.y *= S; c.scale.multiplyScalar(S); });
+      W.colliders.forEach(c => { if (c.enemy === enemy && !c._s) { c.r *= S; c.h *= S; c._s = 1; } }); }
     const bermM = MT.berm, flag = (x, z, c) => { const p = cyl(0.12, 0.16, 16, MT.steel, 8); p.position.set(x, 8, z); B.add(p); const f = new THREE.Mesh(new THREE.PlaneGeometry(7, 4.2), new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, side: THREE.DoubleSide })); f.position.set(x + 3.6, 13.6, z); B.add(f); };
     if (enemy) {
       // قاعدة الخصم: مخطط معكوس، أرضية حصوية داكنة، سواتر حول الحظائر، صخور وسلسلة تلال خلفها، بلا نخيل

@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js?v=14';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=14';
-import { buildFX } from './fx.js?v=14';
+import { buildTextures } from './tex.js?v=15';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=15';
+import { buildFX } from './fx.js?v=15';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
@@ -212,7 +212,7 @@ function scorch(a) { if (a.dmg1) return; a.dmg1 = true;
 function restoreAll(list = G.assets) { list.forEach(a => a.dmg1 = false); list.forEach(a => { a.alive = true; if (a.hp0) a.hp = a.hp0; if (a.ammo0 !== undefined) { a.ammo = a.ammo0; a.reloads = 2; a.rt = 0; } a.cd = 0; a.objs.forEach(o => { const t = o.userData.t0; o.rotation.copy(t.r); o.scale.copy(t.s); o.position.copy(t.p); o.traverse(c => { if (c.userData.m0) { c.material = c.userData.m0; delete c.userData.m0; } }); }); }); shadowOnce(); }
 function buildInfra() {
   const kids = W.home.group.children.filter(c => !(c.geometry && c.geometry.type === 'PlaneGeometry') && !c.isInstancedMesh && c.visible);
-  const near = (x, z, r) => kids.filter(c => Math.hypot(c.position.x - x, c.position.z - z) < r);
+  const near = (x, z, r) => kids.filter(c => Math.hypot(c.position.x - x, c.position.z - z) < r * 1.2);
   [['حظيرة الطائرات 1', -120, -50, 18, 6, true], ['حظيرة الطائرات 2', -120, -14, 18, 6, true], ['حظيرة الطائرات 3', -84, 26, 18, 6, true], ['رادار الإنذار المبكر', -58, -96, 9, 10], ['برج المراقبة', -52, 34, 6, 4], ['خزانات الوقود', 91, -63, 14, 5], ['مبنى القيادة', 60, 96, 15, 6]]
     .forEach(([name, x, z, r, val, flat]) => asset({ name, objs: near(x, z, r), x, z, r: r * 0.8, val, kind: name.startsWith('رادار') ? 'ew' : 'infra', w: name.startsWith('رادار') ? 4 : 1, flat }));
 }
@@ -225,14 +225,14 @@ function makeBattery(k, cx, cz, paint, list, objs, reloads = 2, mod) {
   const S = Object.assign({}, DB[k]); S.cx = cx; S.cz = cz; if (mod) { S.rl *= mod.rl; if (!S.type) S.nL += mod.xl; }
   const add = (o, x, z) => { o.position.set(x, 0, z); compactGroup(o); scene.add(o); objs.push(o); return o; };
   if (S.type) {
-    S.mounts = Array.from({ length: S.nL }, (_, i) => { const x = cx + (i - (S.nL - 1) / 2) * 22, z = cz, o = add(S.type === 'gun' ? W.gunMount() : W.beamMount(), x, z); o.rotation.y = Math.PI;
+    S.mounts = Array.from({ length: S.nL }, (_, i) => { const x = cx + (i - (S.nL - 1) / 2) * 22, z = cz, o = add(S.type === 'gun' ? W.gunMount() : W.beamMount(), x, z); o.scale.setScalar(1.25); o.rotation.y = Math.PI;
       return asset({ name: S.name + (S.nL > 1 ? ' ' + (i + 1) : ''), obj: o, x, z, r: 4, val: 5, sys: k, kind: 'mount', cd: 0, w: 1.5, bat: true }, list); });
   } else {
     const md = TIER[S.tier].model, sc = md === 'quadS' ? 0.75 : 1, tm = md === 'octo' ? 'octo' : 'quad';
     if (S.noRadar) S.radar = { alive: true, fake: true };
-    else { const ro = add(W.truck(paint, 'radar'), cx, cz); ro.scale.setScalar(sc); ro.rotation.y = Math.PI; S.radar = asset({ name: 'رادار ' + S.name, obj: ro, x: cx, z: cz, r: 6, val: 12, sys: k, kind: 'radar', w: 4, bat: true }, list); }
+    else { const ro = add(W.truck(paint, 'radar'), cx, cz); ro.scale.setScalar(sc * 1.25); ro.rotation.y = Math.PI; S.radar = asset({ name: 'رادار ' + S.name, obj: ro, x: cx, z: cz, r: 6, val: 12, sys: k, kind: 'radar', w: 4, bat: true }, list); }
     S.launchers = Array.from({ length: S.nL }, (_, i) => { const a = (i - (S.nL - 1) / 2) * 0.85, R = S.noRadar ? 14 : 30, x = cx + Math.sin(a) * R, z = cz - Math.cos(a) * R, o = add(W.truck(paint, tm), x, z);
-      o.scale.setScalar(S.noRadar ? 0.45 : sc); o.rotation.y = Math.PI + a * 0.5;
+      o.scale.setScalar((S.noRadar ? 0.45 : sc) * 1.25); o.rotation.y = Math.PI + a * 0.5;
       return asset({ name: `منصة ${S.name} ${i + 1}`, obj: o, x, z, r: S.noRadar ? 4 : 6, val: S.noRadar ? 3 : 6, sys: k, kind: 'launcher', ammo: S.per, ammo0: S.per, reloads, rt: 0, w: 2, bat: true }, list); });
   }
   return S;
@@ -565,6 +565,7 @@ function updateCamera(rdt) {
   }
   shake = Math.max(0, shake - rdt * 1.3); const s = shake * shake;
   camera.lookAt(c.look); camera.position.x += Math.sin(G.time * 71) * s * 2; camera.position.y += Math.sin(G.time * 89) * s * 2;
+  { const nr = (c.mode === 'ground' || c.mode === 'foe') ? M.clamp(camera.position.y * 0.05, 0.5, 25) : 0.5; if (Math.abs(camera.near - nr) > 0.2) { camera.near = nr; camera.updateProjectionMatrix(); } }
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, rdt * 5); camera.updateProjectionMatrix(); }
   for (const t of G.tracks) { tA.copy(t.pos).project(camera); const on = detected(t) && tA.z < 1 && Math.abs(tA.x) < 1 && Math.abs(tA.y) < 1; t.mk.style.display = on ? '' : 'none'; if (on) { t.mk.style.transform = `translate(${(tA.x * 0.5 + 0.5) * VW}px,${(-tA.y * 0.5 + 0.5) * VH}px)`; t.mk.classList.toggle('sel', G.selSet.has(t)); } }
   if (G.mode === 'atk' || G.mode === 'bat') atkMarks();
@@ -697,7 +698,7 @@ G.todPick = 'auto'; seg('s-tod', { auto: 'حسب المهمة', day: 'نهار',
 seg('s-q', { auto: 'تلقائي', low: 'منخفضة', med: 'متوسطة', high: 'عالية' }, qPref, k => setQuality(k));
 document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => openLoadout(+b.dataset.go));
 $('rr').onclick = () => G.pvp ? (NET.r ? pvpReopen() : null) : G.mode === 'bat' ? startBattle() : G.mode === 'atk' ? startAtk(G.ai) : start(G.mi); $('rn').onclick = () => G.mode === 'bat' ? openUpgrade() : G.mode === 'atk' ? startAtk(G.ai + 1) : openLoadout(G.mi + 1);
-const menu = () => { if (G.pvp) netLeave(); show('rr', true); clear(); leaveAtk(); restoreAll(); G.state = 'menu'; toBase(); show('result', false); show('menu', true); uiAll(); }; $('rm').onclick = menu; $('menub').onclick = menu;
+const menu = () => { if (G.pvp) netLeave(); show('rr', true); $('rr').textContent = 'إعادة'; clear(); leaveAtk(); restoreAll(); G.state = 'menu'; toBase(); show('result', false); show('menu', true); uiAll(); }; $('rm').onclick = menu; $('menub').onclick = menu;
 
 
 // ---------- شاشة اختيار المنظومات
@@ -749,10 +750,12 @@ $('rsz').onclick = () => { $('rbox').classList.toggle('big'); radarResize(); };
 
 // ---------- الوضع الهجومي: خطّط الضربة على قاعدة خصم يدافع آلياً
 const EC = new V3(ENEMY.x, 0, ENEMY.z);
-function groundLabel(text, x, z, col) { const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256; const g = cv.getContext('2d'); g.direction = 'rtl'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 150px "Tajawal","Noto Kufi Arabic","Segoe UI",Tahoma,sans-serif';
-  g.lineWidth = 14; g.strokeStyle = 'rgba(20,16,10,.75)'; g.strokeText(text, 512, 132); g.fillStyle = col; g.fillText(text, 512, 132); g.fillRect(60, 232, 904, 10); g.fillRect(60, 14, 904, 10);
+function labelDraw(cv, text, col) { const g = cv.getContext('2d'); g.clearRect(0, 0, 1024, 256); g.direction = 'rtl'; g.textAlign = 'center'; g.textBaseline = 'middle'; let fs = 150; do { g.font = `900 ${fs}px "Tajawal","Noto Kufi Arabic","Segoe UI",Tahoma,sans-serif`; fs -= 8; } while (g.measureText(text).width > 900 && fs > 60);
+  g.lineWidth = 14; g.strokeStyle = 'rgba(20,16,10,.75)'; g.strokeText(text, 512, 132); g.fillStyle = col; g.fillText(text, 512, 132); g.fillRect(60, 232, 904, 10); g.fillRect(60, 14, 904, 10); }
+function groundLabel(text, x, z, col) { const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 256; labelDraw(cv, text, col);
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; const m = new THREE.Mesh(new THREE.PlaneGeometry(190, 47.5), new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 }));
-  m.rotation.x = -Math.PI / 2; m.position.set(x, Math.max(heightAt(x, z), heightAt(x - 90, z), heightAt(x + 90, z), 0) + 0.5, z); m.renderOrder = 2; scene.add(m); return m; }
+  m.rotation.x = -Math.PI / 2; m.position.set(x, Math.max(heightAt(x, z), heightAt(x - 90, z), heightAt(x + 90, z), 0) + 0.5, z); m.renderOrder = 2; m.userData = { cv, col, text }; scene.add(m); return m; }
+function labelSet(m, text) { if (m.userData.text === text) return; m.userData.text = text; labelDraw(m.userData.cv, text, m.userData.col); m.material.map.needsUpdate = true; }
 const LBL = { me: groundLabel('قاعدتي', 0, 268, '#eaf7e4'), foe: groundLabel('قاعدة الخصم', EC.x, EC.z + 268, '#ffd9cf') };
 const ATK = [
   { name: 'ضربة تمهيدية', time: 'day', nSys: 3, delay: 6, ch: 1, gap: 3, tries: 1, pkf: 0.5, reloads: 0, inv: { b: 6, c: 10, d: 16 }, goals: ['مركز القيادة'] },
@@ -768,11 +771,11 @@ let eBuilt = false, eBat = []; const HINT0 = $('hint').innerHTML;
 function buildEnemyInfra() {
   if (eBuilt) return; eBuilt = true; Object.values(W.enemy.sys).forEach(o => o.visible = false);
   const kids = W.enemy.group.children.filter(c => !(c.geometry && c.geometry.type === 'PlaneGeometry') && !c.isInstancedMesh && c.visible);
-  const near = (x, z, r) => kids.filter(c => Math.hypot(c.position.x - x, c.position.z - z) < r);
+  const near = (x, z, r) => kids.filter(c => Math.hypot(c.position.x - x, c.position.z - z) < r * 1.2);
   [['مركز القيادة', 0, 0, 19, 20, 3], ['حظيرة الطائرات 1', -120, -50, 18, 6, 2], ['حظيرة الطائرات 2', -120, -14, 18, 6, 2], ['حظيرة الطائرات 3', -84, 26, 18, 6, 2], ['رادار الإنذار المبكر', -58, -96, 9, 10, 1], ['برج المراقبة', -52, 34, 6, 4, 1], ['خزانات الوقود', 91, -63, 14, 6, 1], ['مبنى الإمداد', 60, 96, 15, 5, 1]]
     .forEach(([name, x0, z, r, val, hp]) => { const x = -x0; asset({ name, objs: near(x, z, r), x: EC.x + x, z: EC.z + z, r: r * 0.8, val, hp, hp0: hp, kind: 'infra', supply: name === 'مبنى الإمداد' || name === 'خزانات الوقود', flat: name.startsWith('حظيرة') }, G.eA); });
   [['منصة باليستي 1', 'b', -170, 150, 'erector'], ['منصة باليستي 2', 'b', -120, 172, 'erector'], ['منصة كروز 1', 'c', 150, 168, 'quad'], ['منصة كروز 2', 'c', 192, 138, 'quad'], ['منصة مسيّرات 1', 'd', -45, 180, 'cargo'], ['منصة مسيّرات 2', 'd', 0, 192, 'cargo']]
-    .forEach(([name, sub, x, z, kind]) => { const o = W.truck(W.mats.olive, kind); o.position.set(EC.x + x, 0, EC.z + z); o.rotation.y = Math.PI; if (kind === 'quad' && o.userData.pack) o.userData.pack.rotation.x = -0.5; compactGroup(o); scene.add(o);
+    .forEach(([name, sub, x, z, kind]) => { const o = W.truck(W.mats.olive, kind); o.position.set(EC.x + x, 0, EC.z + z); o.rotation.y = Math.PI; if (kind === 'quad' && o.userData.pack) o.userData.pack.rotation.x = -0.5; o.scale.setScalar(1.25); compactGroup(o); scene.add(o);
       asset({ name, obj: o, x: EC.x + x, z: EC.z + z, r: 7, val: 6, hp: 1, hp0: 1, kind: 'eoff', sub }, G.eA); });
 }
 const supMul = () => { const n = G.eA.filter(a => a.supply && a.alive).length; return n >= 2 ? 1 : n === 1 ? 1.7 : 2.6; };
@@ -789,7 +792,7 @@ function clearAtk() {
   G.mun = []; G.eshots = []; G.lq = []; if (G.plan) G.plan.clear(); G.aSel = null;
 }
 function leaveAtk() {
-  if (G.mode !== 'atk' && G.mode !== 'bat') return; clearAtk(); G.mode = 'def'; show('mapbox', false); show('homep', false); show('foep', false); $('app').classList.remove('batm'); G.foeView = false; $('marks').classList.remove('foe'); show('mtools', true); G.topView = false; removeBoss(); G.speed = 1; W.enemy.group.visible = false; eBat.forEach(o => scene.remove(o)); eBat = []; G.eA = G.eA.filter(a => !a.bat); G.eSys = {};
+  if (G.mode !== 'atk' && G.mode !== 'bat') return; clearAtk(); G.mode = 'def'; show('mapbox', false); show('homep', false); show('foep', false); show('zoomb', false); $('app').classList.remove('batm'); G.foeView = false; $('marks').classList.remove('foe'); show('mtools', true); G.topView = false; removeBoss(); G.speed = 1; W.enemy.group.visible = false; eBat.forEach(o => scene.remove(o)); eBat = []; G.eA = G.eA.filter(a => !a.bat); G.eSys = {};
   shC.set(30, 0, -10); G.cam.center.set(55, 0, -15); G.cam.dist = 420; G.cam.lastF = null; G.cam.focus = null; G.cam.fw = 0;
   $('side').classList.remove('atk'); show('rbox', true); $('hpw').querySelector('small').textContent = 'سلامة القاعدة'; $('left').previousElementSibling.textContent = 'أهداف متبقية'; $('hint').innerHTML = HINT0; $('hp').style.background = 'var(--ok)'; batObjs.forEach(o => o.visible = true);
 }
@@ -985,7 +988,7 @@ const UPG = [
   { id: 'je', n: '+1 طلعة إيييقل', d: 'طلعة قصف إضافية في كل معركة', f: u => u.ammo.e++ },
   { id: 'pw', n: 'رؤوس حربية أقوى', d: 'كل إصابة تضر أكثر بـ50٪', f: u => u.pow *= 1.5 },
   { id: 'pk', n: 'دفاع أدق', d: 'اعتراض دفاعك الآلي أدق', f: u => u.pk += 0.1 },
-  { id: 'wv', n: 'موجة أسرع', d: 'زر موجة الاعتراض يعود أسرع', f: u => u.wave = Math.max(8, u.wave - 6) },
+  { id: 'wv', n: 'رادار أدق', d: 'اعتراض دفاعك الآلي أدق قليلاً', f: u => u.pk += 0.06 },
 ];
 const newUp = () => ({ rl: 1, xl: 0, ammo: { b: 0, c: 0, d: 0, e: 0 }, pow: 1, pk: 0, wave: 20, picked: [] });
 G.up = newUp(); G.stage = 0;
@@ -1023,9 +1026,9 @@ function startBattle() {
   if (G.pvp) G.assets.forEach(a => { a.hp = a.hp0 = ({ 'مبنى القيادة': 3, 'حظيرة الطائرات 1': 2, 'حظيرة الطائرات 2': 2, 'حظيرة الطائرات 3': 2 })[a.name] || 1; });
   G.aSel = G.eA.find(a => a.name === L.goals[0]);
   G.foeView = false; $('marks').classList.remove('foe'); $('foep').innerHTML = '👁 قاعدة الخصم'; $('app').classList.add('batm');
-  $('side').classList.add('atk'); show('rbox', false); show('mtools', false); show('mapbox', true); show('homep', true); show('foep', true); show('menu', false); show('result', false);
+  $('side').classList.add('atk'); show('rbox', false); show('mtools', false); show('mapbox', false); show('homep', true); show('foep', true); show('zoomb', true); show('menu', false); show('result', false);
   $('hpw').querySelector('small').textContent = 'قاعدة الخصم';
-  if (G.pvp) { NET.sent = false; NET.last = performance.now(); NET.stT = 0; $('mname').textContent = 'نفرين · غرفة ' + NET.code; banner('ابدأ القتال!', 'دمّر مركز قيادة خصمك ورادار إنذاره', '', 3.2); battleIntro(); uiBat(); return; }
+  if (G.pvp) { NET.sent = false; NET.last = performance.now(); NET.stT = 0; $('mname').textContent = `جولة ${NET.sc.me + NET.sc.foe + 1} · أنت ${NET.sc.me} – ${NET.sc.foe} ${foeNm()}`; labelSet(LBL.foe, NET.peerNm ? 'قاعدة ' + NET.peerNm : 'قاعدة الخصم'); banner('ابدأ القتال!', 'دمّر مركز قيادة خصمك ورادار إنذاره', '', 3.2); battleIntro(); uiBat(); return; }
   battleIntro(); log(`المعركة ${G.stage + 1} من 5: ${ST.name}`); $('mname').textContent = `${G.stage + 1}/5 · ${ST.name}`; banner(`المعركة ${G.stage + 1} من 5`, ST.boss ? 'دمّر المخبأ المحصّن، وانتبه لرشقاته الانتقامية' : ST.name, ST.boss ? 'warn' : '', 3.2); uiBat();
 }
 const JSORT = { l: 2, m: 3, h: 4 };
@@ -1080,7 +1083,9 @@ function jetTick(dt) {
 const NET = { r: null, uid: Math.random().toString(36).slice(2, 9), code: '', host: false, peer: null, peerSys: null, last: 0, sent: false, seq: 1, hiT: 0, goT: 0, gotSt: false, rdy: false, peerRdy: false, peerCn: '', pv: 0, tod: 'day', seen: 0, startT: 0 };
 const PROTO = 2, PKG = { bal: { n: 'متوازن', b: 10, c: 16, d: 24 }, hvy: { n: 'باليستي ثقيل', b: 18, c: 10, d: 10 }, crz: { n: 'كروز كثيف', b: 6, c: 26, d: 14 }, swm: { n: 'سرب مسيّرات', b: 5, c: 10, d: 44 } };
 G.pvpPkg = store.get('pk', 'bal'); if (!PKG[G.pvpPkg]) G.pvpPkg = 'bal';
-const netHi = () => netSend('hi', { sys: G.loadout, host: NET.host, cn: G.preset, rdy: NET.rdy, tod: G.todPick || 'day', v: PROTO });
+G.pname = store.get('nm', ''); const esc = s => String(s || '').replace(/[<>&"']/g, '').slice(0, 12), foeNm = () => NET.peerNm || 'خصمك', WINS = 2, matchOver = () => NET.sc.me >= WINS || NET.sc.foe >= WINS;
+NET.sc = { me: 0, foe: 0 }; NET.peerNm = '';
+const netHi = () => netSend('hi', { sys: G.loadout, host: NET.host, cn: G.preset, rdy: NET.rdy, tod: G.todPick || 'day', v: PROTO, nm: G.pname });
 let roomBase;
 async function getRoom() {
   if (roomBase !== undefined && roomBase) return roomBase;
@@ -1106,13 +1111,13 @@ async function netOpen(code, host) {
   if (!base) { pvpStatus(window.FBCFG ? 'ما قدرت أتصل بخادم اللعب. تأكد من الإنترنت وجرّب مرة ثانية.' : 'معركة النفرين تشتغل من رابط النسخة الأونلاين.', 'bad'); return false; }
   NET.host = host; try { NET.r = await base.join('saqr-pvp-' + code); } catch (e) { NET.r = null; }
   if (!NET.r) { pvpStatus('تعذّر دخول الغرفة', 'bad'); return false; }
-  Object.assign(NET, { code, host, peer: null, peerSys: null, rdy: false, peerRdy: false, pv: 0 }); NET.r.on('g', (d) => netMsg(d && d.data && d.data.ty ? d.data : d));
+  Object.assign(NET, { code, host, peer: null, peerSys: null, rdy: false, peerRdy: false, pv: 0, peerNm: '', sc: { me: 0, foe: 0 } }); NET.r.on('g', (d) => netMsg(d && d.data && d.data.ty ? d.data : d));
   clearInterval(NET.iv); NET.iv = setInterval(() => { const now = performance.now(); if (!G.pvp) { netHi(); if (NET.peer && now - NET.seen > 9000 && NET.peerRdy !== null) { NET.peerRdy = null; pvpLobby(); } } else if (now - NET.startT < 7000) netHi(); }, 1200);
   netHi(); pvpLobby(); return true;
 }
 function netMsg(d) {
   if (!d || d.u === NET.uid || !d.ty) return; if (NET.peer && d.u !== NET.peer) return; NET.last = performance.now();
-  if (d.ty === 'hi') { const first = !NET.peer; NET.peer = d.u; NET.seen = performance.now(); NET.pv = d.v | 0; NET.peerRdy = !!d.rdy; if (!G.pvp) { NET.peerSys = d.sys; NET.peerCn = d.cn || ''; if (d.host && d.tod) NET.tod = d.tod; } if (first) netHi(); if (!G.pvp) { pvpLobby(); pvpMaybeStart(); } return; }
+  if (d.ty === 'hi') { const first = !NET.peer; NET.peer = d.u; NET.seen = performance.now(); NET.pv = d.v | 0; NET.peerRdy = !!d.rdy; NET.peerNm = esc(d.nm); if (!G.pvp) { NET.peerSys = d.sys; NET.peerCn = d.cn || ''; if (d.host && d.tod) NET.tod = d.tod; } if (first) netHi(); if (!G.pvp) { pvpLobby(); pvpMaybeStart(); } return; }
   if (d.ty === 'bye') { if (G.pvp && G.state === 'play') pvpDrop('خرج خصمك من المعركة'); else if (!G.pvp) { NET.peer = null; NET.peerRdy = false; pvpLobby(); } return; }
   if (!G.pvp && NET.rdy && NET.peerSys && (d.ty === 'st' || d.ty === 'f')) pvpMaybeStart(true);
   if (!G.pvp) return;
@@ -1145,7 +1150,7 @@ function applySt(d) {
   G.eInteg = d.i; if (G.state === 'play' && G.AL.goals.every(n => !G.eA.some(x => x.name === n && x.alive))) pvpWin(); uiBat();
 }
 function pvpWin() { if (G.state !== 'play') return; const gl = G.eA.find(x => x.name === 'مركز القيادة'); G.AL.goals.forEach(n => G.eA.filter(x => x.name === n && x.alive).forEach(x => { x.alive = false; wreck(x); })); startCine(new V3(gl.x, 0, gl.z), () => finishBat(true), 'سقطت قاعدة خصمك', 'انتصرت في معركة النفرين', true); }
-function pvpDrop(why) { if (G.state !== 'play') return; G.state = 'result'; finishBat(false); $('result').className = 'ov'; $('rt').textContent = 'انتهت المعركة'; $('rs').textContent = why; netLeave(); }
+function pvpDrop(why) { if (G.state !== 'play') return; G.state = 'result'; NET.noScore = true; finishBat(false); $('result').className = 'ov'; $('rt').textContent = 'انتهت المعركة'; $('rs').textContent = why; netLeave(); }
 function pvpTick(dt) {
   if ((NET.stT -= dt) <= 0) { NET.stT = 1.5; netSend('st', { a: homeSt(), i: integrity() }); }
   if (G.state !== 'play') return;
@@ -1155,7 +1160,7 @@ function pvpTick(dt) {
   if (performance.now() - NET.last > 25000) pvpDrop('انقطع الاتصال بخصمك');
 }
 function startPvp() { G.pvp = true; NET.startT = NET.last = performance.now(); G.up = newUp(); G.stage = 0; show('pvp', false); netHi(); startBattle(); }
-function pvpMaybeStart(force) { if (G.pvp || !NET.rdy || !NET.peer || !NET.peerSys || !NET.peerSys.length) return; if (!force && (!NET.peerRdy || NET.pv !== PROTO)) return; G.todPick = NET.host ? (G.todPick || 'day') : (NET.tod || 'day'); startPvp(); }
+function pvpMaybeStart(force) { if (G.pvp || !NET.rdy || !NET.peer || !NET.peerSys || !NET.peerSys.length) return; if (!force && (!NET.peerRdy || NET.pv !== PROTO)) return; G.todPick = ['day', 'sunset', 'night'][(NET.sc.me + NET.sc.foe) % 3]; startPvp(); }
 function pvpStatus(t, cls = '') { const e = $('pvpst'); e.textContent = t; e.className = 'pvpst ' + cls; }
 function pvpSetup() {
   const pool = PRESETS[G.preset].l; G.loadout = G.loadout.filter(k => DB[k]).slice(0, MAXSYS); if (!G.loadout.length) G.loadout = pool.slice(0, MAXSYS);
@@ -1171,15 +1176,17 @@ function pvpLobby() {
   sb.disabled = !NET.peer; sb.textContent = NET.rdy ? 'ألغِ الجاهزية' : 'أنا جاهز ✓'; sb.classList.toggle('pri', !NET.rdy);
   if (!NET.peer) { $('pvpfoe').textContent = NET.host ? 'أعطِ صاحبك رقم الغرفة. تقدر تجهّز اختياراتك الحين.' : 'جاري البحث عن الغرفة… تأكد من الرقم.'; pvpStatus(''); return; }
   const ps = (NET.peerSys || []).map(k => DB[k] ? DB[k].name : k).join('، '), cn = PRESETS[NET.peerCn] ? PRESETS[NET.peerCn].n : '';
-  $('pvpfoe').innerHTML = `<b>خصمك${cn ? ' · ' + cn : ''}</b> — ${NET.peerRdy === null ? 'غير متصل الحين…' : NET.peerRdy ? 'جاهز ✓' : 'يختار…'}<br>دفاعه: ${ps}`;
+  const scl = NET.sc.me + NET.sc.foe ? `<br><b style="color:var(--sand)">النتيجة: أنت ${NET.sc.me} – ${NET.sc.foe} ${foeNm()} · الجولة ${NET.sc.me + NET.sc.foe + 1}</b>` : '<br>المباراة: أول من يفوز بجولتين';
+  $('pvpfoe').innerHTML = `<b>${NET.peerNm || 'خصمك'}${cn ? ' · ' + cn : ''}</b> — ${NET.peerRdy === null ? 'غير متصل الحين…' : NET.peerRdy ? 'جاهز ✓' : 'يختار…'}<br>دفاعه: ${ps}${scl}`;
   if (NET.pv !== PROTO) return pvpStatus('خصمك على نسخة قديمة من اللعبة. خلّه يحدّث الصفحة ويدخل الغرفة من جديد.', 'bad');
   pvpStatus(NET.rdy ? (NET.peerRdy ? 'تبدأ الحين…' : 'أنت جاهز. بانتظار خصمك يضغط جاهز…') : (NET.peerRdy ? 'خصمك جاهز! اضغط «أنا جاهز» وتبدأ المعركة.' : 'اختر دولتك ودفاعك وأسلحتك ثم اضغط «أنا جاهز».'), NET.rdy || NET.peerRdy ? 'ok' : '');
 }
-function pvpReopen() { G.pvp = false; NET.rdy = false; NET.peerRdy = false; show('result', false); show('pvp', true); pvpSetup(); pvpLobby(); netHi(); }
-$('pvpgo').onclick = () => { audioInit(); show('menu', false); show('pvp', true); show('pvp1', true); show('pvp2', false); pvpStatus(''); $('pvpcode').value = ''; pvpSetup();
+function pvpReopen() { if (matchOver()) NET.sc = { me: 0, foe: 0 }; G.pvp = false; NET.rdy = false; NET.peerRdy = false; show('result', false); show('pvp', true); pvpSetup(); pvpLobby(); netHi(); }
+$('pvpgo').onclick = () => { audioInit(); show('menu', false); show('pvp', true); show('pvp1', true); show('pvp2', false); pvpStatus(''); $('pvpcode').value = ''; $('pvpname').value = G.pname; pvpSetup();
   if (!window.FBCFG && !/[?&]local\b/.test(location.search)) { show('pvp1', false); $('pvpst').innerHTML = 'معركة النفرين تشتغل من النسخة الأونلاين، وبدون حساب:<br><a href="https://alshehriag.github.io/saqr-game/" target="_blank" rel="noopener" style="color:var(--sand);font-weight:900">alshehriag.github.io/saqr-game</a>'; } };
-$('pvpnew').onclick = () => netOpen(String(1000 + Math.floor(Math.random() * 9000)), true);
-$('pvpjoin').onclick = () => { const c = $('pvpcode').value.replace(/\D/g, ''); if (c.length !== 4) return pvpStatus('اكتب رقم الغرفة (4 أرقام)', 'bad'); netOpen(c, false); };
+const pvpNm = () => { G.pname = esc($('pvpname').value.trim()); store.set('nm', G.pname); };
+$('pvpnew').onclick = () => { pvpNm(); netOpen(String(1000 + Math.floor(Math.random() * 9000)), true); };
+$('pvpjoin').onclick = () => { const c = $('pvpcode').value.replace(/\D/g, ''); if (c.length !== 4) return pvpStatus('اكتب رقم الغرفة (4 أرقام)', 'bad'); pvpNm(); netOpen(c, false); };
 $('pvpstart').onclick = () => { if (!NET.peer) return; NET.rdy = !NET.rdy; netHi(); pvpLobby(); pvpMaybeStart(); };
 $('pvpx').onclick = () => { netLeave(); show('pvp', false); show('menu', true); };
 function fireBat(k) {
@@ -1208,11 +1215,11 @@ function battleTick(dt, rdt) {
 function waveFire() {
   if (G.mode !== 'bat' || G.state !== 'play' || G.waveCd > 0) return; const near = G.tracks.filter(t => t.alive && !t.K.friend && t.pos.distanceTo(HOMEC) < 4500); if (!near.length) return;
   let n = 0; for (const t of near) { t.cls = 'hostile'; let c = 0; for (const k of SYSK) { if (c >= 2) break; const S = SYS[k]; if (why(k, t) !== 'ok' || (S.type && !S.mounts.some(a => a.alive && a.cd <= 0))) continue; launchOne(k, t); c++; n++; } }
-  G.waveCd = G.up.wave; banner('موجة اعتراض!', `${n} اعتراض على ${near.length} ${near.length > 1 ? 'أهداف' : 'هدف'}`, 'ok', 1.6); radio('كل المنصات، أطلقوا!'); launchSnd(0.8);
+  G.waveCd = 1.5; banner('موجة اعتراض!', `${n} اعتراض على ${near.length} ${near.length > 1 ? 'أهداف' : 'هدف'}`, 'ok', 1.6); radio('كل المنصات، أطلقوا!'); launchSnd(0.8);
 }
 function waveUI(rdt) {
   G.waveCd = Math.max(0, (G.waveCd || 0) - rdt); const b = $('wave'), close = G.state === 'play' && G.tracks.some(t => t.alive && !t.K.friend && t.pos.distanceTo(HOMEC) < 2500);
-  b.classList.toggle('hid', !(close || G.waveCd > 0) || G.state !== 'play'); b.classList.toggle('ready', close && G.waveCd <= 0); b.disabled = G.waveCd > 0; b.querySelector('i').textContent = G.waveCd > 0 ? Math.ceil(G.waveCd) + ' ث' : 'خطر قريب!';
+  b.classList.toggle('hid', !close); b.classList.toggle('ready', close && G.waveCd <= 0); b.disabled = G.waveCd > 0; b.querySelector('i').textContent = 'خطر قريب! اضغط';
 }
 $('wave').addEventListener('pointerdown', e => { e.stopPropagation(); audioInit(); waveFire(); });
 function finishBat(win) {
@@ -1220,7 +1227,10 @@ function finishBat(win) {
   $('result').className = win ? 'ov win' : 'ov lose'; $('rt').textContent = win ? 'انتصرت في المعركة' : 'سقطت قاعدتك';
   $('rs').textContent = win ? `دُمّرت أهداف الخصم · سلامة قاعدتك ${integrity()}٪` : (G.failWhy || 'دُمّرت القاعدة');
   $('rd').textContent = `ذخائر أصابت: ${G.ws.hit} · اعتُرضت: ${G.ws.shot} · النقاط: ${sc}`; const last = G.stage >= STAGES.length - 1; if (win && last) { $('rt').textContent = 'انتصرت في الحملة!'; $('rs').textContent = 'دمّرت المخبأ وأنهيت المعارك الخمس'; } else if (win) $('rt').textContent = `انتصرت في المعركة ${G.stage + 1} من 5`;
-  $('rn').textContent = 'اختر ترقية والمعركة التالية'; show('rn', win && !last && !G.pvp); show('rr', !G.pvp || (NET.host && !!NET.peer)); if (G.pvp) { $('rd').textContent += NET.host ? ' · اضغط «إعادة» لجولة ثانية' : ' · المضيف يقدر يبدأ جولة ثانية'; $('rt').textContent = win ? 'انتصرت على خصمك!' : 'خصمك هزمك'; $('rs').textContent = win ? 'سقطت قاعدة خصمك' : (G.failWhy || 'سقطت قاعدتك'); } show('result', true); say(win ? (last ? 'كفو! انتصرنا في الحملة' : 'السماء آمنة') : 'فشلت المهمة');
+  $('rn').textContent = 'اختر ترقية والمعركة التالية'; show('rn', win && !last && !G.pvp); show('rr', !G.pvp || !!NET.r); $('rr').textContent = 'إعادة';
+  if (G.pvp) { if (NET.noScore) NET.noScore = false; else { win ? NET.sc.me++ : NET.sc.foe++; }
+    const over = matchOver(), sc = `أنت ${NET.sc.me} – ${NET.sc.foe} ${foeNm()}`; $('rt').textContent = over ? (NET.sc.me > NET.sc.foe ? '🏆 فزت بالمباراة!' : `${foeNm()} فاز بالمباراة`) : (win ? `فزت بالجولة على ${foeNm()}!` : `${foeNm()} أخذ الجولة`);
+    $('rs').textContent = (win ? 'سقطت قاعدة خصمك' : (G.failWhy || 'سقطت قاعدتك')) + ' · النتيجة: ' + sc; $('rr').textContent = over ? 'مباراة جديدة' : 'الجولة التالية'; } show('result', true); say(win ? (last ? 'كفو! انتصرنا في الحملة' : 'السماء آمنة') : 'فشلت المهمة');
 }
 // ---------- مشهد التدمير: حركة بطيئة وانفجارات ثانوية ودوران حول الهدف ثم النتيجة
 function startCine(pos, then, title, sub, good) {
@@ -1279,7 +1289,9 @@ const eUp = e => { const p = EP.get(e.pointerId); if (!p) return; EP.delete(e.po
 em.addEventListener('pointerup', eUp); em.addEventListener('pointercancel', eUp);
 em.addEventListener('wheel', e => { e.preventDefault(); pvZoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); }, { passive: false });
 $('pzin').onclick = () => pvZoom(1.4); $('pzout').onclick = () => pvZoom(1 / 1.4); $('pzrs').onclick = pvReset;
-function foeView(on) { G.foeView = on; G.fv = { x: 0, z: 0, k: 1 }; $('marks').classList.toggle('foe', on); show('mapbox', !on && G.mode === 'bat'); $('foep').innerHTML = on ? '↩ قاعدتي' : '👁 قاعدة الخصم'; toBase(); }
+function foeView(on) { G.foeView = on; G.fv = { x: 0, z: 0, k: 1 }; $('marks').classList.toggle('foe', on); $('foep').innerHTML = on ? '↩ قاعدتي' : '👁 قاعدة الخصم'; toBase(); }
+const zoomBy = f => { if (G.cam.mode === 'ground') gZoom(tC.copy(GROUND), f); else if (G.cam.mode === 'foe') G.fv.k = M.clamp(G.fv.k * f, 0.45, 5); else G.cam.dist = M.clamp(G.cam.dist / f, 160, 2200); };
+$('zplus').onclick = () => zoomBy(1.35); $('zminus').onclick = () => zoomBy(1 / 1.35);
 $('foep').onclick = () => { if (G.mode === 'bat' && G.state === 'play') foeView(!G.foeView); };
 $('emttl').onclick = () => { $('mapbox').classList.toggle('mini'); emT = 1; };
 function toggleView() { G.topView = !G.topView; G.cam.center.copy(HOMEC); G.cam.lastF = null; G.cam.focus = null; G.cam.fw = 0; toBase(); uiBat(); }
