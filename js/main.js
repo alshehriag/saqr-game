@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js?v=6';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=6';
-import { buildFX } from './fx.js?v=6';
+import { buildTextures } from './tex.js?v=7';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=7';
+import { buildFX } from './fx.js?v=7';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
@@ -62,7 +62,7 @@ function applyTier(name) {
   resize(); shadowOnce(); $('qv').textContent = (Q.auto ? 'تلقائي: ' : '') + { low: 'منخفضة', med: 'متوسطة', high: 'عالية' }[name];
 }
 function setQuality(pref) { qPref = pref; store.set('q', pref); Q.auto = pref === 'auto'; applyTier(Q.auto ? 'med' : pref); }
-addEventListener('resize', resize);
+addEventListener('resize', resize); try { let rzT = 0; new ResizeObserver(() => { clearTimeout(rzT); rzT = setTimeout(() => { if (view.clientWidth !== VW || view.clientHeight !== VH) resize(); }, 60); }).observe(view); } catch (e) { }
 
 // ---------- الصوت
 const A = { ctx: null, on: store.get('snd', '1') === '1' };
@@ -396,7 +396,7 @@ function launchOne(k, t) {
   if (G.mode !== 'bat') { const chip = m.chip = document.createElement('button'); chip.className = 'chip new'; setTimeout(() => chip.classList.remove('new'), 900); chip.innerHTML = `<b>${S.name}</b><i>${t.id}</i>`; chip.onclick = () => followShot(m); $('chips').appendChild(chip); }
 }
 function followShot(m) { if (!m.alive) return; G.follow = m; G.cam.mode = 'follow'; G.cam.t = 0;[...$('chips').children].forEach(c => c.classList.toggle('on', c === m.chip)); show('backb', true); }
-function toBase() { G.follow = null; G.cam.mode = (G.mode === 'bat' && !G.topView && G.state !== 'menu') ? 'ground' : 'base'; G.cam.t = 0;[...$('chips').children].forEach(c => c.classList.remove('on')); show('backb', false); }
+function toBase() { G.follow = null; G.cam.mode = (G.mode === 'bat' && G.foeView && G.state !== 'menu') ? 'foe' : (G.mode === 'bat' && !G.topView && G.state !== 'menu') ? 'ground' : 'base'; G.cam.t = 0;[...$('chips').children].forEach(c => c.classList.remove('on')); show('backb', false); }
 function endShot(m) { m.alive = false; if (m.obj) scene.remove(m.obj); if (m.chip) m.chip.remove(); if (G.follow === m) { G.cam.mode = 'blast'; G.cam.t = 0; G.blast = m.pos.clone(); G.follow = null; } }
 function killTrack(t, byUs) {
   if (t.nid && G.pvp) netSend(byUs ? 'x' : 'h', { id: t.nid });
@@ -517,6 +517,8 @@ function updateCamera(rdt) {
   } else if (c.mode === 'ground') {
     camera.position.lerp(GROUND, c.t < 0.05 ? 1 : Math.min(1, rdt * 4));
     const cp = Math.cos(c.gp); c.look.copy(camera.position).add(tA.set(Math.sin(c.gy) * cp, Math.sin(c.gp), -Math.cos(c.gy) * cp).multiplyScalar(100)); fov = c.gfov; F.post.heat = 0;
+  } else if (c.mode === 'foe') {
+    camera.position.lerp(tB.set(EC.x + 20, 270, EC.z + 480), c.t < 0.05 ? 1 : Math.min(1, rdt * 2.5)); c.look.set(EC.x + 5, 0, EC.z - 25); fov = 50; F.post.heat = 0;
   } else if (c.mode === 'cine' && G.cine) {
     const p = G.cine.p, a = 0.6 + c.t * 0.16, R = Math.max(95, 170 - c.t * 10); camera.position.set(p.x + Math.sin(a) * R, 40 + c.t * 4, p.z + Math.cos(a) * R); c.look.set(p.x, 12 + c.t * 2, p.z); fov = 44; F.post.focus = 1; F.post.focusPos.copy(c.look); F.post.heat = 0;
   } else if (c.mode === 'blast') { c.look.lerp(G.blast, Math.min(1, rdt * 5)); fov = 50; if (c.t > 2.6) toBase(); F.post.heat = 0; }
@@ -740,7 +742,7 @@ function clearAtk() {
   G.mun = []; G.eshots = []; G.lq = []; if (G.plan) G.plan.clear(); G.aSel = null;
 }
 function leaveAtk() {
-  if (G.mode !== 'atk' && G.mode !== 'bat') return; clearAtk(); G.mode = 'def'; show('mapbox', false); show('homep', false); show('mtools', true); G.topView = false; removeBoss(); G.speed = 1; W.enemy.group.visible = false; eBat.forEach(o => scene.remove(o)); eBat = []; G.eA = G.eA.filter(a => !a.bat); G.eSys = {};
+  if (G.mode !== 'atk' && G.mode !== 'bat') return; clearAtk(); G.mode = 'def'; show('mapbox', false); show('homep', false); show('foep', false); $('app').classList.remove('batm'); G.foeView = false; $('marks').classList.remove('foe'); show('mtools', true); G.topView = false; removeBoss(); G.speed = 1; W.enemy.group.visible = false; eBat.forEach(o => scene.remove(o)); eBat = []; G.eA = G.eA.filter(a => !a.bat); G.eSys = {};
   shC.set(30, 0, -10); G.cam.center.set(55, 0, -15); G.cam.dist = 420; G.cam.lastF = null; G.cam.focus = null; G.cam.fw = 0;
   $('side').classList.remove('atk'); show('rbox', true); $('hpw').querySelector('small').textContent = 'سلامة القاعدة'; $('left').previousElementSibling.textContent = 'أهداف متبقية'; $('hint').innerHTML = HINT0; $('hp').style.background = 'var(--ok)'; batObjs.forEach(o => o.visible = true);
 }
@@ -880,7 +882,7 @@ function finishAtk(win) {
   $('rd').textContent = `موجات: ${G.wave} · ذخائر متبقية: ${left} · النقاط: ${sc}`; show('rn', win && !!ATK[G.ai + 1]); show('result', true); say(win ? 'نجحت الضربة' : 'فشلت الضربة');
 }
 function atkMarks() {
-  for (const a of G.eA) { if (!a.mk) continue; tA.set(a.x, 5, a.z).project(camera); const on = a.alive && !a.pvpOff && G.cam.mode === 'base' && tA.z < 1 && Math.abs(tA.x) < 1 && Math.abs(tA.y) < 1; a.mk.style.display = on ? '' : 'none';
+  for (const a of G.eA) { if (!a.mk) continue; tA.set(a.x, 5, a.z).project(camera); const on = a.alive && !a.pvpOff && (G.cam.mode === 'base' || G.cam.mode === 'foe') && tA.z < 1 && Math.abs(tA.x) < 1 && Math.abs(tA.y) < 1; a.mk.style.display = on ? '' : 'none';
     if (on) { a.mk.style.transform = `translate(${(tA.x * 0.5 + 0.5) * VW}px,${(-tA.y * 0.5 + 0.5) * VH}px)`; a.mk.classList.toggle('sel', a === G.aSel); a.mk.classList.toggle('pl', G.plan.has(a)); } }
 }
 function uiAtk() {
@@ -905,7 +907,7 @@ $('atk').addEventListener('pointerdown', e => {
   if (d.jet) { launchJet(); return; }
   if (d.fire) { G.holdK = d.fire; G.holdT = 0.45; fireBat(d.fire); return; }
   if (d.a !== undefined) G.aSel = G.eA[+d.a]; else if (d.pm) { const [k, n] = d.pm.split(':'); planAdd(G.aSel, k, (+n) * (e.shiftKey ? 5 : 1)); } else if (d.tm) G.timing = d.tm;
-  else if (d.act === 'go') return launchStrike(); else if (d.act === 'clr') G.plan.clear(); else if (d.act === 'spd') G.speed = G.speed === 1 ? 3 : 1; G.mode === 'bat' ? uiBat() : uiAtk();
+  else if (d.act === 'go') return launchStrike(); else if (d.act === 'clr') G.plan.clear(); else if (d.act === 'spd') G.speed = G.speed === 1 ? 3 : 1; else if (d.act === 'more') G.batMore = !G.batMore; G.mode === 'bat' ? uiBat() : uiAtk();
 });
 ['pointerup', 'pointercancel', 'blur'].forEach(ev => addEventListener(ev, () => { G.holdK = null; }));
 $('marks').addEventListener('pointerdown', e => { const b = e.target.closest('[data-a]'); if (b && (G.mode === 'atk' || G.mode === 'bat')) { e.stopPropagation(); G.aSel = G.eA[+b.dataset.a]; G.mode === 'bat' ? uiBat() : uiAtk(); } });
@@ -973,7 +975,8 @@ function startBattle() {
   G.eA.forEach(a => { a.pvpOff = G.pvp && (a.kind === 'eoff' || a.name === 'مبنى الإمداد'); if (a.pvpOff && a.mk) a.mk.style.display = 'none'; });
   if (G.pvp) G.assets.forEach(a => { a.hp = a.hp0 = ({ 'مبنى القيادة': 3, 'حظيرة الطائرات 1': 2, 'حظيرة الطائرات 2': 2, 'حظيرة الطائرات 3': 2 })[a.name] || 1; });
   G.aSel = G.eA.find(a => a.name === L.goals[0]);
-  $('side').classList.add('atk'); show('rbox', false); show('mtools', false); show('mapbox', true); show('homep', true); show('menu', false); show('result', false);
+  G.foeView = false; $('marks').classList.remove('foe'); $('foep').innerHTML = '👁 قاعدة الخصم'; $('app').classList.add('batm');
+  $('side').classList.add('atk'); show('rbox', false); show('mtools', false); show('mapbox', true); show('homep', true); show('foep', true); show('menu', false); show('result', false);
   $('hpw').querySelector('small').textContent = 'قاعدة الخصم';
   if (G.pvp) { NET.sent = false; NET.last = performance.now(); NET.stT = 0; $('mname').textContent = 'نفرين · غرفة ' + NET.code; banner('ابدأ القتال!', 'دمّر مركز قيادة خصمك ورادار إنذاره', '', 3.2); say('بسم الله، المعركة بدأت'); uiBat(); return; }
   log(`المعركة ${G.stage + 1} من 5: ${ST.name}`); $('mname').textContent = `${G.stage + 1}/5 · ${ST.name}`; banner(`المعركة ${G.stage + 1} من 5`, ST.boss ? 'دمّر المخبأ المحصّن، وانتبه لرشقاته الانتقامية' : ST.name, ST.boss ? 'warn' : '', 3.2); uiBat();
@@ -1212,8 +1215,11 @@ const eUp = e => { const p = EP.get(e.pointerId); if (!p) return; EP.delete(e.po
 em.addEventListener('pointerup', eUp); em.addEventListener('pointercancel', eUp);
 em.addEventListener('wheel', e => { e.preventDefault(); pvZoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); }, { passive: false });
 $('pzin').onclick = () => pvZoom(1.4); $('pzout').onclick = () => pvZoom(1 / 1.4); $('pzrs').onclick = pvReset;
+function foeView(on) { G.foeView = on; $('marks').classList.toggle('foe', on); show('mapbox', !on && G.mode === 'bat'); $('foep').innerHTML = on ? '↩ قاعدتي' : '👁 قاعدة الخصم'; toBase(); }
+$('foep').onclick = () => { if (G.mode === 'bat' && G.state === 'play') foeView(!G.foeView); };
+$('emttl').onclick = () => { $('mapbox').classList.toggle('mini'); emT = 1; };
 function toggleView() { G.topView = !G.topView; G.cam.center.copy(HOMEC); G.cam.lastF = null; G.cam.focus = null; G.cam.fw = 0; toBase(); uiBat(); }
-$('homep').onclick = () => { if (G.mode === 'bat') toggleView(); };
+$('homep').onclick = () => { if (G.mode === 'bat') { if (G.foeView) foeView(false); toggleView(); } };
 $('pipsz').onclick = () => { $('mapbox').classList.toggle('big'); emT = 1; };
 function uiBat() {
   if (G.mode !== 'bat') return; const L = G.AL, a = G.aSel && G.aSel.alive ? G.aSel : (G.aSel = null);
@@ -1223,6 +1229,7 @@ function uiBat() {
   let h = `<div class="sec"><h4>المطلوب تدميره</h4><div class="goals">${L.goals.map(n => { const x = G.eA.find(y => y.name === n), d = !x.alive; return `<span class="${d ? 'g' : ''}">${d ? '✓' : '○'} ${n}${d ? '' : ` · تحمّل ${x.hp}`}</span>`; }).join('')}</div></div>`;
   h += `<div class="sec"><h4>الهدف المحدد</h4>${a ? `<div class="dh hostile"><b>${a.name}</b><i>تحمّل ${a.hp ?? 1}</i></div>` : '<p class="mut">اضغط هدفاً على القاعدة أو الخريطة الصغيرة</p>'}
     <div class="fire">${WK.map(k => `<button data-fire="${k}" ${a ? '' : 'disabled'}><b>${KIND[k].name}</b><small>${WNOTE[k]}</small><em>${G.openAmmo ? '∞' : G.inv[k]}</em></button>`).join('')}<button class="jetb" data-jet="1" ${a ? '' : 'disabled'}><span><b>✈ إيييقل</b><small>ف-15 · طلعة قصف بثلاث قنابل · قد تُسقط</small></span><em>${G.jets.some(j => j.alive) ? 'في الجو' : G.openAmmo ? '∞' : G.inv.e}</em></button></div></div>`;
+  h += `<button class="morebtn" data-act="more">${G.batMore ? 'إخفاء التفاصيل ▴' : 'المزيد: دفاعك وأهداف الخصم ▾'}</button><div id="batmore" class="${G.batMore ? '' : 'hid'}">`;
   h += `<div class="sec"><h4 class="hrow">في الجو <button class="pill" data-act="spd">السرعة ×${G.speed}</button></h4><div class="dg"><div><small>ذخائرك</small><b>${G.mun.length}</b></div><div><small>أصابت</small><b>${G.ws.hit}</b></div><div><small>اعتُرضت</small><b>${G.ws.shot}</b></div><div><small>تهديدات عليك</small><b>${G.tracks.filter(t => !t.K.friend).length}</b></div></div></div>`;
   h += `<div class="sec"><h4>دفاعك الآلي</h4><div class="aslist">${SYSK.map(k => { const S = SYS[k], st = sysState(k); return `<div class="as${st.on ? '' : ' off'}"><b>${S.name}</b><span>${st.n}/${st.tot}</span>${S.type ? '' : `<span>جاهز ${st.ammo}</span>`}${st.reloading ? '<span class="y">تلقيم</span>' : ''}</div>`; }).join('')}</div></div>`;
   const offN = (k) => G.eA.filter(x => x.kind === 'eoff' && x.sub === k && x.alive).length, sup = G.eA.filter(x => x.supply);
@@ -1230,7 +1237,7 @@ function uiBat() {
   const rows = G.eA.map((x, i) => [x, i]).filter(([x]) => x.alive && !x.pvpOff).sort(([x], [y]) => (L.goals.includes(y.name) - L.goals.includes(x.name)) || ((y.kind === 'eoff') - (x.kind === 'eoff')) || ((y.kind === 'radar') - (x.kind === 'radar')) || ((!!y.supply) - (!!x.supply)));
   h += `<div class="sec"><h4>أهداف قاعدة الخصم</h4><div id="atl">${rows.map(([x, i]) => `<button data-a="${i}" class="tr${x === a ? ' on' : ''}${L.goals.includes(x.name) ? ' hostile' : ''}"><span>${x.name}</span><i>${x.kind === 'eoff' ? 'هجوم' : x.supply ? 'إمداد' : (x.kind === 'radar' || x.kind === 'launcher' || x.kind === 'mount') ? 'دفاع' : ''}</i><em>${x.hp ?? 1}</em></button>`).join('')}</div></div>`;
   h += `<div class="sec"><h4>دفاعات الخصم</h4><div class="aslist">${Object.values(G.eSys).map(S => { const st = eState(S); return `<div class="as${st.on ? '' : ' off'}"><b>${S.name}</b>${S.type || S.radar.fake ? '' : `<span class="${st.radar ? 'g' : 'r'}">رادار ${st.radar ? '✓' : '✕'}</span>`}<span>${st.n}/${st.tot}</span></div>`; }).join('')}</div></div>`;
-  $('atk').innerHTML = h;
+  h += '</div>'; $('atk').innerHTML = h;
 }
 const ammoUI = () => {}; seg('s-ammo', Object.fromEntries(Object.entries(AMMO).map(([k, v]) => [k, v.n])), G.ammoLvl, k => { G.ammoLvl = k; store.set('al', k); });
 $('batgo').onclick = () => startCampaign();

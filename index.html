@@ -190,6 +190,12 @@ button{min-height:30px}
 .pvprow{display:flex;gap:6px;margin-top:10px}.pvprow input{flex:1;font-size:22px;text-align:center;letter-spacing:6px;padding:10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:#fff}
 .pvprow button{padding:0 18px;border-radius:10px;font-weight:900}.pvpcode{font-size:46px;font-weight:900;letter-spacing:12px;text-align:center;color:var(--sand);margin:6px 0 10px}
 .pvpst{font-size:13.5px;min-height:20px;margin:10px 0 6px;color:var(--mut)}.pvpst.ok{color:#7be08f}.pvpst.bad{color:#ff7a66}.pvpx{width:100%;padding:10px;border-radius:10px;margin-top:4px}
+#foep{position:absolute;right:6px;top:calc(env(safe-area-inset-top) + 82px);z-index:2;font-size:12px;padding:6px 10px;background:rgba(255,91,69,.18);border-color:rgba(255,91,69,.55)}
+#mapbox{width:132px!important}#mapbox.big{width:min(92vw,420px)!important}#emttl{cursor:pointer;font-size:10.5px!important;color:var(--sand)}
+#mapbox:not(.big) #pzout,#mapbox:not(.big) #pzin,#mapbox:not(.big) #pzrs{display:none}#mapbox.mini #emap{display:none}#mapbox.mini{width:auto!important}
+#marks.foe .mk.tg:not(.goal):not(.sel) b{display:none}
+#app.batm{grid-template-rows:minmax(0,1fr) auto!important}#app.batm #side{max-height:46vh}#app.batm #side .sec.t-log{display:none}#app.batm #radio{top:calc(env(safe-area-inset-top) + 124px)}
+.morebtn{width:100%;margin:6px 0 2px;padding:9px;border-radius:10px;font-size:12.5px;font-weight:800;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--mut)}
 </style>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 </head>
@@ -212,8 +218,9 @@ button{min-height:30px}
     <div id="banner"><div id="bt"></div><div id="bs"></div></div>
     <div id="rbox"><div class="rtop"><span>رادار</span><span><button id="rzi">+</button><button id="rzo">−</button><button id="rsz">⤢</button></span></div><canvas id="radar"></canvas>
       <div id="legend"><span><i style="color:var(--unk)"></i>مجهول</span><span><i style="color:var(--bad);transform:rotate(45deg)"></i>معادٍ</span><span><i style="color:var(--ok);border-radius:50%"></i>صديق</span><span><i style="color:#9fe8ff;border-radius:50%;width:5px;height:5px;background:#9fe8ff"></i>صاروخنا</span></div></div>
-    <div id="mapbox" class="hid"><div class="rtop"><span>● الخصم</span><span class="pzb"><button id="pzout">−</button><button id="pzin">+</button><button id="pzrs">⌖</button><button id="pipsz">⤢</button></span></div><canvas id="emap"></canvas></div>
+    <div id="mapbox" class="hid"><div class="rtop"><span id="emttl">● قاعدة الخصم</span><span class="pzb"><button id="pzout">−</button><button id="pzin">+</button><button id="pzrs">⌖</button><button id="pipsz">⤢</button></span></div><canvas id="emap"></canvas></div>
     <button class="pill hid" id="homep"></button>
+    <button class="pill hid" id="foep">👁 قاعدة الخصم</button>
     <div id="radio"></div>
     <button id="wave" class="hid"><b>موجة اعتراض</b><i></i></button>
     <div id="zoomb"><button id="camb" title="الكاميرا">🎥</button></div>
@@ -306,7 +313,7 @@ button{min-height:30px}
 <div id="result" class="ov hid"><div class="card"><h3 id="rt"></h3><p id="rs"></p><p id="rd"></p><div class="btns"><button id="rn" class="hid">المهمة التالية</button><button id="rr">إعادة</button><button id="rm">القائمة</button></div></div></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="./js/net-config.js?v=6"></script>
-<script type="module" src="./js/main.js?v=6"></script>
+<script src="./js/net-config.js?v=7"></script>
+<script type="module" src="./js/main.js?v=7"></script>
 </body>
 </html>
