@@ -1039,8 +1039,10 @@ async function getRoom() {
 function fbRoom() {
   const fb = window.firebase, cfg = window.FBCFG; if (!fb || !cfg) return null;
   try { if (!fb.apps.length) fb.initializeApp(cfg); } catch (e) { return null; } const db = fb.database();
-  return { join(name) { const room = db.ref('rooms/' + name.replace(/[^\w-]/g, '')), ref = room.child('m'), fns = {}, start = ref.push().key;
-    if (NET.host) room.remove(); const q = ref.orderByKey().startAt(start); q.on('child_added', s => { const v = s.val(); const f = v && fns[v.t]; if (f) { try { f(JSON.parse(v.d)); } catch (e) {} } });
+  let off = 0; db.ref('.info/serverTimeOffset').on('value', s => { off = s.val() || 0; });
+  const PC = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz', kts = k => { let t = 0; for (let i = 0; i < 8; i++) t = t * 64 + PC.indexOf(k[i]); return t; };
+  return { join(name) { const room = db.ref('rooms/' + name.replace(/[^\w-]/g, '')), ref = room.child('m'), fns = {};
+    if (NET.host) room.remove(); const q = ref.limitToLast(60); q.on('child_added', s => { if (kts(s.key) < Date.now() + off - 15000) return; const v = s.val(); const f = v && fns[v.t]; if (f) { try { f(JSON.parse(v.d)); } catch (e) {} } });
     return { emit(t, d) { ref.push({ t, d: JSON.stringify(d) }); }, on(t, fn) { fns[t] = fn; }, leave() { q.off(); } }; } };
 }
 function localRoom() { return { join(name) { const bc = new BroadcastChannel(name), fns = {}; bc.onmessage = e => { const f = fns[e.data.t]; if (f) f(e.data.d); }; return { emit(t, d) { bc.postMessage({ t, d }); }, on(t, fn) { fns[t] = fn; }, leave() { bc.close(); } }; } }; }
