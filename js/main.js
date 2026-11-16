@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js?v=8';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=8';
-import { buildFX } from './fx.js?v=8';
+import { buildTextures } from './tex.js?v=9';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=9';
+import { buildFX } from './fx.js?v=9';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
@@ -107,20 +107,25 @@ const SAYMAP = { 'الرادار يعمل': 'الرادار شغّال! يالل
 // ---------- أصوات المذيع المسجّلة (Google AI Studio · Puck بلهجة سعودية)
 const VOIDS = ['welcome','start','c3','c2','c1','fire','hostile','radar','hit1','hit2','hit3','kill1','kill2','intercept','threat','basehit','close','wave','ballistic','cruise','drones','revenge','jetgo','jetbombs','jetflare','jetlost','jetback','enemyjet','win','lose','campaign','ready','friend'];
 const VO = {}; let voLoading = false, voSrc = null;
-function voLoad() { if (voLoading || !A.ctx) return; voLoading = true; VOIDS.forEach(id => fetch(`./vo/${id}.mp3?v=1`).then(r => r.ok ? r.arrayBuffer() : null).then(b => b && new Promise((ok, no) => A.ctx.decodeAudioData(b, ok, no))).then(buf => { if (buf) VO[id] = buf; }).catch(() => {})); }
+let MUS = null, musSrc = null, musG = null, musWant = false;
+function musPlay() { if (!A.ctx || !MUS || musSrc) return; const c = A.ctx, t = c.currentTime; musG = c.createGain(); musG.gain.setValueAtTime(0.0001, t); musG.gain.exponentialRampToValueAtTime(0.55, t + 0.6);
+  if (VO.welcome) { musG.gain.setValueAtTime(0.55, t + 0.7); musG.gain.linearRampToValueAtTime(0.22, t + 1.0); musG.gain.setValueAtTime(0.22, t + 5.4); musG.gain.linearRampToValueAtTime(0.55, t + 6.2); }
+  musSrc = c.createBufferSource(); musSrc.buffer = MUS; musSrc.connect(musG); musG.connect(A.master); musSrc.onended = () => { musSrc = null; }; musSrc.start(t); }
+function musStop(d = 1.2) { if (!musSrc || !A.ctx) return; const t = A.ctx.currentTime, s = musSrc; musG.gain.cancelScheduledValues(t); musG.gain.setValueAtTime(Math.max(0.0001, musG.gain.value), t); musG.gain.exponentialRampToValueAtTime(0.0001, t + d); setTimeout(() => { try { s.stop(); } catch (e) { } }, d * 1000 + 50); musSrc = null; }
+function voLoad() { if (voLoading || !A.ctx) return; voLoading = true; fetch('./vo/intro.mp3?v=1').then(r => r.ok ? r.arrayBuffer() : null).then(b => b && new Promise((ok, no) => A.ctx.decodeAudioData(b, ok, no))).then(buf => { if (buf) { MUS = buf; if (musWant && (G.state === 'menu' || G.state === undefined)) musPlay(); } }).catch(() => {}); VOIDS.forEach(id => fetch(`./vo/${id}.mp3?v=1`).then(r => r.ok ? r.arrayBuffer() : null).then(b => b && new Promise((ok, no) => A.ctx.decodeAudioData(b, ok, no))).then(buf => { if (buf) VO[id] = buf; }).catch(() => {})); }
 function voPlay(id, vol = 1) { if (!A.on || !A.ctx || !VO[id]) return false; try { if (voSrc) { try { voSrc.stop(); } catch (e) { } } speechSynthesis.cancel(); } catch (e) { } const s = A.ctx.createBufferSource(), g = A.ctx.createGain(); s.buffer = VO[id]; g.gain.value = 1.15 * vol; s.connect(g); g.connect(A.master); s.start(); voSrc = s; return true; }
 const VOTEXT = { 'هدف معادٍ': 'hostile', 'تم الاعتراض': 'intercept', 'تهديد وشيك': 'threat', 'أُصيبت القاعدة': 'basehit', 'إصابة في القاعدة': 'basehit', 'السماء آمنة': 'win', 'فشلت المهمة': 'lose', 'دُمّر الهدف': 'kill1', 'الرادار يعمل': 'radar', 'أسقطتَ هدفاً صديقاً': 'friend', 'كفو! انتصرنا في الحملة': 'campaign', 'فاتنا بشعرة!': 'close', 'هدف ثانٍ': 'hostile', 'دمّرناه! كفو!': 'kill1', 'راح عليهم!': 'kill2', 'تم التدمير!': 'kill1', 'أصبناه!': 'hit1', 'إصابة مباشرة!': 'hit2', 'في الصميم!': 'hit3', 'نجحت الضربة': 'win', 'فشلت الضربة': 'lose' };
 const VORADIO = [[/^كل المنصات/, 'wave'], [/أقلعت/, 'jetgo'], [/القنابل انطلقت/, 'jetbombs'], [/المشاعل/, 'jetflare'], [/^فقدنا/, 'jetlost'], [/رجعت سالمة/, 'jetback'], [/طائرة معادية|طائرة الخصم/, 'enemyjet'], [/رشقة انتقامية/, 'revenge'], [/باليستي/, 'ballistic'], [/كروز/, 'cruise'], [/مسيّرات/, 'drones'], [/^منصة .* جاهزة/, 'ready']];
 const voFor = t => VOTEXT[t] || (VORADIO.find(([r]) => r.test(t)) || [])[1];
 let introT = [];
-function battleIntro() { introT.forEach(clearTimeout); introT = []; if (!A.ctx) return; siren(); const at = (ms, f) => introT.push(setTimeout(() => { if (G.state === 'play' && G.mode === 'bat') f(); }, ms));
+function battleIntro() { introT.forEach(clearTimeout); introT = []; musWant = false; musStop(); if (!A.ctx) return; siren(); const at = (ms, f) => introT.push(setTimeout(() => { if (G.state === 'play' && G.mode === 'bat') f(); }, ms));
   at(700, () => voPlay('start')); [['3', 'c3'], ['2', 'c2'], ['1', 'c1']].forEach(([n, id], i) => at(5600 + i * 1000, () => { voPlay(id); banner(n, 'استعد', '', 0.9, false); beep(660, 0.12, 0.12); }));
   at(8600, () => { voPlay('fire'); banner('إطلاق!', '', 'ok', 1.2, false); beep(990, 0.25, 0.14); }); }
 function siren() { if (!A.ctx) return; const c = A.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter(); o.type = 'sawtooth'; f.type = 'lowpass'; f.frequency.value = 1800;
   o.frequency.setValueAtTime(420, t); for (let i = 0; i < 3; i++) { o.frequency.linearRampToValueAtTime(880, t + i * 0.9 + 0.45); o.frequency.linearRampToValueAtTime(420, t + i * 0.9 + 0.9); }
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.15); g.gain.setValueAtTime(0.09, t + 2.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.8); o.connect(f); f.connect(g); g.connect(A.master); o.start(t); o.stop(t + 2.9); }
 let welcomed = false;
-addEventListener('pointerdown', () => { audioInit(); voLoad(); if (!welcomed) { welcomed = true; let n = 0; const tryW = () => { if (G.state !== 'menu' && G.state !== undefined) return; if (VO.welcome) voPlay('welcome'); else if (n++ < 30) setTimeout(tryW, 200); }; setTimeout(tryW, 250); } }, { capture: true });
+addEventListener('pointerdown', () => { audioInit(); voLoad(); if (!welcomed) { welcomed = true; musWant = true; let n = 0; const tryW = () => { if (G.state !== 'menu' && G.state !== undefined) return; if (VO.welcome) { voPlay('welcome'); musPlay(); } else if (n++ < 30) setTimeout(tryW, 200); else musPlay(); }; setTimeout(tryW, 250); } }, { capture: true });
 function say(text) { { const id = voFor(SAYMAP[text] !== undefined ? text : text) || voFor(SAYMAP[text] || ''); if (id && voPlay(id)) return; } text = SAYMAP[text] ?? text; if (!text) return; if (!A.on || !arVoice) return; try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.voice = arVoice; u.lang = arVoice.lang; u.rate = 1.04; u.pitch = 1; u.volume = 1; speechSynthesis.speak(u); } catch (e) { } }
 
 // ---------- قاعدة المنظومات: أسماء مستوحاة، وأرقام لعبة مقرّبة (ليست بيانات حقيقية)
@@ -316,7 +321,7 @@ function show(id, on) { $(id).classList.toggle('hid', !on); }
 function log(msg, cls = '') { const l = $('log'), d = document.createElement('div'); d.className = cls; d.textContent = msg; l.prepend(d); while (l.children.length > 6) l.lastChild.remove(); }
 
 // ---------- المهمة
-function start(mi) {
+function start(mi) { musWant = false; musStop();
   audioInit(); clear(); leaveAtk(); restoreAll(); buildBatteries(); const Ms = G.M = MISSIONS[mi]; G.mi = mi; W.setTime(G.todPick && G.todPick !== 'auto' ? G.todPick : Ms.time); shadowOnce();
   F.post.nv = false; show('nvb', !!W.preset.night); $('nvb').classList.remove('on');
   Object.assign(G, { state: 'play', t: 0, score: 0, kills: 0, leaks: 0, nextId: 1, sel: null, follow: null, rCap: 30000, failWhy: '', endT: 0 }); G.selSet.clear(); toBase();
@@ -763,7 +768,7 @@ function leaveAtk() {
   shC.set(30, 0, -10); G.cam.center.set(55, 0, -15); G.cam.dist = 420; G.cam.lastF = null; G.cam.focus = null; G.cam.fw = 0;
   $('side').classList.remove('atk'); show('rbox', true); $('hpw').querySelector('small').textContent = 'سلامة القاعدة'; $('left').previousElementSibling.textContent = 'أهداف متبقية'; $('hint').innerHTML = HINT0; $('hp').style.background = 'var(--ok)'; batObjs.forEach(o => o.visible = true);
 }
-function startAtk(ai) {
+function startAtk(ai) { musWant = false; musStop();
   audioInit(); clear(); leaveAtk(); buildEnemyInfra(); const L = G.AL = ATK[ai]; G.ai = ai; G.mode = 'atk';
   restoreAll(G.eA); buildEnemyBatteries(L); W.enemy.group.visible = true; batObjs.forEach(o => o.visible = false);
   W.setTime(G.todPick && G.todPick !== 'auto' ? G.todPick : L.time); shC.set(EC.x + 20, 0, EC.z - 10); shadowOnce();
