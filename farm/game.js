@@ -23,7 +23,20 @@ const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.r
 
 // ───────────── الصوت ─────────────
 const AU = { ctx: null, on: localStorage.getItem('farm-snd') !== '0' };
-function au() { if (!AU.ctx) { try { AU.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (AU.ctx && AU.ctx.state === 'suspended') AU.ctx.resume(); return AU.on ? AU.ctx : null; }
+function au() {
+  if (!AU.ctx) { try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {} try { AU.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (AU.ctx && AU.ctx.state !== 'running') { try { AU.ctx.resume(); } catch (e) {} }
+  return AU.on && AU.ctx ? AU.ctx : null;
+}
+// الآيفون ما يشغّل الصوت إلا بعد لمسة حقيقية (touchend/click)، وزر الصامت يكتم Web Audio — نفتح الصوت بمقطع صامت ونخليه «تشغيل» مو «رنين»
+function unlockAudio() {
+  const c = au(); if (!c || AU.unlocked) return;
+  try { const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch (e) {}
+  try { const el = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAIwUdkRgQbFAZC1CQEwTJ9mjRvBA4UOLD8nKVOWfh+UlK3z/177OXrfOdKl7pyn3Xf//WreyTRUoAWgBgkOAGbZHBgG1OF6zM82DWbZaUmMBptgQhGjsyYqc9ae9XFz280948NMBWInljyzsNRFLPWdnZGWrddDsjK1unuSrVN9jJsK8KuQtQCtMBjCEtImISdNKJOopIpBFpNSMbIHCSRpRR5iakjTiyzLhchUUBwCgyKiweBv/7UsQbg8isVNoMPMjAAAA0gAAABEVFGmgqK////9bP/6XCykxBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'); el.volume = 0; el.play().catch(() => {}); } catch (e) {}
+  AU.unlocked = c.state === 'running';
+}
+['touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, unlockAudio, { capture: true, passive: true }));
+document.addEventListener('visibilitychange', () => { if (!document.hidden && AU.ctx) { AU.unlocked = false; try { AU.ctx.resume(); } catch (e) {} } });
 function tone(f1, f2, dur, type = 'sine', vol = .12, delay = 0) {
   const c = au(); if (!c) return; const t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
   o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
@@ -51,13 +64,13 @@ function setupInput(cv) {
   cv.addEventListener('touchstart', e => { au(); const t = e.changedTouches[0]; if (IN.id === null) start(t.identifier, t.clientX, t.clientY); e.preventDefault(); }, { passive: false });
   cv.addEventListener('touchmove', e => { for (const t of e.changedTouches) if (t.identifier === IN.id) move(t.clientX, t.clientY); e.preventDefault(); }, { passive: false });
   const te = e => { for (const t of e.changedTouches) if (t.identifier === IN.id) end(); };
-  cv.addEventListener('touchend', te); cv.addEventListener('touchcancel', te);
+  cv.addEventListener('touchend', e => { unlockAudio(); te(e); }); cv.addEventListener('touchcancel', te);
   cv.addEventListener('mousedown', e => { au(); start('m', e.clientX, e.clientY); });
   addEventListener('mousemove', e => { if (IN.id === 'm') move(e.clientX, e.clientY); });
   addEventListener('mouseup', () => { if (IN.id === 'm') end(); });
   addEventListener('keydown', e => { IN.keys[e.key.toLowerCase()] = 1; if (e.key === ' ' || e.key === 'Shift') { IN.act = true; e.preventDefault(); } });
   addEventListener('keyup', e => { IN.keys[e.key.toLowerCase()] = 0; });
-  const db = $('#act'); const tap = e => { au(); IN.act = true; e.preventDefault(); e.stopPropagation(); };
+  const db = $('#act'); const tap = e => { unlockAudio(); IN.act = true; e.preventDefault(); e.stopPropagation(); };
   db.addEventListener('touchstart', tap, { passive: false }); db.addEventListener('mousedown', tap);
 }
 function readDir() {
