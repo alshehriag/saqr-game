@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffe7b0">
+<title>مزرعة الشيوخ</title>
+<meta property="og:title" content="مزرعة الشيوخ 🐑😼">
+<meta property="og:description" content="لعبة جماعية من ٢ إلى ٤ لاعبين — اجمع حيواناتك وانتبه من جاي!">
+<style>
+@font-face{font-family:Lalezar;src:url(fonts/lalezar-arabic-400-normal.woff2);unicode-range:U+0600-06FF,U+0750-077F,U+FB50-FDFF,U+FE70-FEFF,U+200C-200E,U+2010-2011,U+204F,U+2E41}
+@font-face{font-family:Lalezar;src:url(fonts/lalezar-latin-400-normal.woff2);unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:Tajawal;font-weight:500;src:url(fonts/tajawal-arabic-500-normal.woff2);unicode-range:U+0600-06FF,U+0750-077F,U+FB50-FDFF,U+FE70-FEFF,U+200C-200E,U+2010-2011,U+204F,U+2E41}
+@font-face{font-family:Tajawal;font-weight:500;src:url(fonts/tajawal-latin-500-normal.woff2);unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:Tajawal;font-weight:800;src:url(fonts/tajawal-arabic-800-normal.woff2);unicode-range:U+0600-06FF,U+0750-077F,U+FB50-FDFF,U+FE70-FEFF,U+200C-200E,U+2010-2011,U+204F,U+2E41}
+@font-face{font-family:Tajawal;font-weight:800;src:url(fonts/tajawal-latin-800-normal.woff2);unicode-range:U+0000-00FF,U+2000-206F}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{font-family:Tajawal,system-ui,sans-serif;color:#3b2a1a;user-select:none;-webkit-user-select:none;touch-action:none;
+ background:radial-gradient(circle at 50% 0%,#fff6dc 0%,#ffe7b0 45%,#f6c978 100%)}
+body:before{content:"";position:fixed;inset:0;background-image:radial-gradient(#e9b45e 1.6px,transparent 1.8px);background-size:34px 34px;opacity:.3;pointer-events:none}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:none}
+body.playing #cv{display:block}
+.scr{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;overflow-y:auto;touch-action:pan-y;padding:calc(18px + env(safe-area-inset-top)) 18px 24px}
+.scr.on{display:flex}
+#game.scr{padding:0;pointer-events:none;overflow:visible}
+h1{font-family:Lalezar;font-weight:400;font-size:clamp(58px,17vw,96px);line-height:1;color:#e4574b;text-shadow:0 5px 0 #8e2d22,0 12px 20px rgba(120,50,10,.3);margin-top:4px}
+.tag{font-weight:800;font-size:18px;color:#5a3a1c;margin:8px 0 2px;text-align:center}
+#heroJay{width:150px;margin:-6px 0 -10px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.15))}
+.card{width:100%;max-width:440px;background:#fffaf0;border-radius:24px;padding:16px;margin-top:12px;box-shadow:0 0 0 4px #3b2a1a,0 9px 0 #3b2a1a}
+.lbl{font-weight:800;font-size:16px;margin-bottom:8px;color:#6b4a2a}
+input{width:100%;font:800 20px Tajawal;padding:12px 14px;border-radius:14px;border:3px solid #e2c38c;background:#fff;color:#3b2a1a;outline:none;text-align:center}
+input:focus{border-color:#e4574b} input.err{border-color:#d93a2f;animation:sh .3s}
+@keyframes sh{25%{transform:translateX(6px)}75%{transform:translateX(-6px)}}
+.row{display:flex;gap:10px;margin-top:10px}
+.chp{flex:1;border:3px solid #e2c38c;background:#fff;border-radius:16px;padding:6px;font:800 16px Tajawal;color:#3b2a1a;display:flex;flex-direction:column;align-items:center;cursor:pointer}
+.chp img{height:64px}
+.chp.on{border-color:#e4574b;background:#ffece8;box-shadow:0 0 0 3px #e4574b55}
+.btn{display:block;width:100%;font:800 21px Tajawal;border:none;border-radius:18px;padding:15px;cursor:pointer;color:#fff;background:#e4574b;box-shadow:0 6px 0 #8e2d22;margin-top:12px}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 #8e2d22}
+.btn.g{background:#4f9d2a;box-shadow:0 6px 0 #2c5c14}.btn.b{background:#3d8bd9;box-shadow:0 6px 0 #1f5a99}.btn.k{background:#3b2a1a;box-shadow:0 6px 0 #000}
+.btn:disabled{opacity:.45}
+.bns{display:flex;gap:8px;margin-top:8px}.bn{flex:1;font:800 17px Tajawal;padding:8px;border-radius:12px;border:3px solid #e2c38c;background:#fff;color:#3b2a1a}
+.bn.on{border-color:#4f9d2a;background:#eaf7dc}
+.or{display:flex;align-items:center;gap:10px;margin:14px 0 2px;color:#8a6a4a;font-weight:800}.or:before,.or:after{content:"";flex:1;height:2px;background:#e2c38c}
+.how{font-size:15px;line-height:1.7;color:#5a3a1c}.how b{color:#e4574b}
+#code{font-family:Lalezar;font-size:64px;letter-spacing:8px;color:#3d8bd9;text-align:center;line-height:1.1;direction:ltr}
+.pl{display:flex;align-items:center;gap:10px;border-radius:16px;padding:6px 10px;margin-top:8px;background:#fff;border:3px solid var(--c,#e2c38c);font-weight:800;font-size:18px;min-height:62px}
+.pl img{height:50px}.pl span{flex:1}.pl em{font-style:normal;font-size:13px;background:#eee;padding:3px 8px;border-radius:10px}
+.pl.empty{border-style:dashed;color:#b09070;justify-content:center}
+.pl .x{border:none;background:#f3d6d2;color:#8e2d22;font-weight:800;border-radius:10px;width:32px;height:32px}
+.msg{min-height:22px;text-align:center;font-weight:800;margin-top:8px;font-size:15px}.msg.bad{color:#d93a2f}.msg.good{color:#3f7a16}
+/* أثناء اللعب */
+#top{position:fixed;top:calc(6px + env(safe-area-inset-top));left:8px;right:8px;display:flex;align-items:center;gap:6px;pointer-events:none;height:54px}
+#chips{display:flex;gap:5px;flex:1;min-width:0}
+.chip{flex:1;min-width:0;background:var(--c);color:#fff;border-radius:14px;padding:3px 6px;text-align:center;box-shadow:0 3px 0 rgba(0,0,0,.25);line-height:1.05}
+.chip b{display:block;font-weight:800;font-size:22px}.chip span{display:block;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip.me{outline:3px solid #fff}
+#timer{background:#3b2a1a;color:#ffcc4d;font:800 22px Tajawal;padding:9px 12px;border-radius:16px;min-width:70px;text-align:center}
+#timer.hot{background:#d93a2f;color:#fff;animation:pulse .5s infinite alternate}
+@keyframes pulse{to{transform:scale(1.08)}}
+.ib{pointer-events:auto;border:none;background:#fffaf0;border-radius:14px;width:42px;height:42px;font-size:20px;box-shadow:0 3px 0 #3b2a1a}
+#rule{position:fixed;top:calc(66px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:rgba(255,253,245,.92);border:2px solid #1d4f91;color:#1d4f91;font-weight:800;font-size:14px;padding:3px 12px;border-radius:12px;white-space:nowrap;pointer-events:none}
+#rule:empty{display:none}
+#dash{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom));left:22px;width:96px;height:96px;border-radius:50%;border:none;background:#ffcc4d;color:#3b2a1a;font:800 19px Tajawal;box-shadow:0 6px 0 #a87a10,0 0 0 4px #3b2a1a;pointer-events:auto;line-height:1.1}
+#dash.cd{opacity:.45}
+#hint{transition:opacity .5s;position:fixed;bottom:calc(30px + env(safe-area-inset-bottom));right:20px;color:#fff;font-weight:800;font-size:14px;text-shadow:0 2px 3px rgba(0,0,0,.5);pointer-events:none;opacity:.9}
+#toast{position:fixed;top:calc(100px + env(safe-area-inset-top));left:50%;transform:translate(-50%,-20px) scale(.9);opacity:0;transition:.25s;background:#3b2a1a;color:#fff;font-weight:800;font-size:17px;padding:8px 16px;border-radius:16px;pointer-events:none;text-align:center;max-width:90vw}
+#toast.show{opacity:1;transform:translate(-50%,0) scale(1)}#toast.good{background:#4f9d2a}#toast.bad{background:#c2367f}#toast.info{background:#3b2a1a}
+#memo{position:fixed;top:50%;left:50%;width:min(86vw,380px);transform:translate(-50%,-50%) rotate(-3deg) scale(.4);opacity:0;pointer-events:none;transition:.35s cubic-bezier(.3,1.6,.6,1);
+ background:#fffdf5;background-image:repeating-linear-gradient(#fffdf5 0 38px,#d8e6f5 38px 40px);border-radius:22px;padding:18px 20px 22px;box-shadow:0 0 0 5px #3b2a1a,0 12px 0 #3b2a1a}
+#memo.show{opacity:1;transform:translate(-50%,-50%) rotate(-3deg) scale(1)}
+#memo .mh{font-family:Lalezar;font-size:26px;color:#1d4f91}
+#memo .mt{font-weight:800;font-size:28px;margin-top:4px}
+#memo .md{font-weight:500;font-size:17px;color:#6b5a48;margin-top:6px;line-height:1.5}
+#memo .st{position:absolute;left:14px;top:12px;transform:rotate(-14deg);border:4px solid #d93a2f;color:#d93a2f;border-radius:50%;width:84px;height:84px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:800;font-size:16px;line-height:1.15;opacity:.85}
+#end .card{text-align:center}
+#endTitle{font-family:Lalezar;font-size:52px;color:#e4574b;line-height:1.2}
+.rk{display:flex;align-items:center;gap:10px;background:#fff;border:3px solid var(--c);border-radius:16px;padding:8px 12px;margin-top:8px;font-weight:800;font-size:20px}
+.rk i{font-style:normal;font-size:26px;width:34px}.rk span{flex:1;text-align:right}.rk b{font-weight:800;font-size:28px;color:var(--c)}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<section class="scr on" id="menu">
+  <h1>مزرعة الشيوخ</h1>
+  <div class="tag">اجمع حيواناتك لحظيرتك… وانتبه من جاي!</div>
+  <img id="heroJay" alt="">
+  <div class="card">
+    <div class="lbl">اسمك</div>
+    <input id="name" maxlength="12" placeholder="اكتب اسمك">
+    <div class="row">
+      <button class="chp" data-c="f"><img id="chF" alt="">فلاح</button>
+      <button class="chp" data-c="h"><img id="chH" alt="">راعي إبل</button>
+    </div>
+    <button class="btn" id="create">افتح غرفة وادعُ ربعك</button>
+    <div class="row"><input id="joinCode" inputmode="numeric" maxlength="4" placeholder="رمز الغرفة" style="flex:1.3"><button class="btn b" id="join" style="flex:1;margin:0">ادخل</button></div>
+    <div class="or">أو</div>
+    <div class="lbl" style="margin:0">العب ضد الكمبيوتر</div>
+    <div class="bns"><button class="bn" data-n="1">ضد ١</button><button class="bn" data-n="2">ضد ٢</button><button class="bn" data-n="3">ضد ٣</button></div>
+    <button class="btn g" id="solo">العب الحين</button>
+  </div>
+  <div class="card how">
+    <b>كيف تلعب:</b> اسحب بإصبعك في أي مكان عشان تمشي. المس الحيوانات وتمشي وراك، ودخّلها حظيرتك تنحسب لك نقاط.<br>
+    🐑 الخروف بنقطة · 🐇 الأرنب بنقطتين (يهرب!) · 🐫 الجمل بثلاث (يبطّئك)<br>
+    🐛 <b>الدودة</b> لا تدخلها حظيرتك — ودّها حظيرة غيرك تاكل من حيواناتهم!<br>
+    🏃 <b>اندفاع</b>: اخبط لاعب ماشي وراه قطيع وخذ منه. وادخل حظيرة غيرك واسرق منها.<br>
+    📜 كل ٤٠ ثانية ينزل <b>تعميم إداري</b> يغيّر القوانين.<br>
+    😼 لما يلمع <b>جاي</b> المسه: يا بونس… يا مقلب!
+  </div>
+</section>
+
+<section class="scr" id="lobby">
+  <h1 style="font-size:54px">مزرعة الشيوخ</h1>
+  <div class="card" style="text-align:center">
+    <div class="lbl">رمز الغرفة</div>
+    <div id="code">----</div>
+    <button class="btn b" id="share">📤 أرسل الدعوة لربعك</button>
+  </div>
+  <div class="card">
+    <div class="lbl">اللاعبين (٢ إلى ٤)</div>
+    <div id="plist"></div>
+    <div id="lobbyMsg" class="msg"></div>
+    <div id="hostCtl">
+      <button class="btn k" id="addBot">+ أضف لاعب كمبيوتر</button>
+      <button class="btn g" id="startBtn">ابدأ اللعب</button>
+    </div>
+    <div id="guestWait" class="msg">بانتظار صاحب الغرفة يبدأ…</div>
+    <button class="btn" id="leave" style="background:#a08870;box-shadow:0 6px 0 #6b5a48">رجوع</button>
+  </div>
+</section>
+
+<section class="scr" id="game">
+  <div id="top"><button class="ib" id="quit">✕</button><div id="chips"></div><div id="timer">2:30</div><button class="ib" id="snd">🔊</button></div>
+  <div id="rule"></div>
+  <button id="dash">اندفاع<br>💨</button>
+  <div id="hint">اسحب بإصبعك للحركة</div>
+  <div id="memo"><div class="st">إدارة<br>البيت</div><div class="mh">تعميم إداري</div><div class="mt"></div><div class="md"></div></div>
+  <div id="toast"></div>
+</section>
+
+<section class="scr" id="end">
+  <div class="card">
+    <div id="endTitle">انتهت الجولة</div>
+    <div id="rank"></div>
+    <button class="btn g" id="again">جولة ثانية</button>
+    <div id="waitHost" class="msg">بانتظار صاحب الغرفة…</div>
+    <button class="btn k" id="toMenu">رجوع</button>
+  </div>
+</section>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="net-config.js"></script>
+<script src="sprites.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
