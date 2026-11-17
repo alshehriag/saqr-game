@@ -33,9 +33,22 @@ function unlockAudio() {
   const c = au(); if (!c || AU.unlocked) return;
   try { const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch (e) {}
   try { const el = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAIwUdkRgQbFAZC1CQEwTJ9mjRvBA4UOLD8nKVOWfh+UlK3z/177OXrfOdKl7pyn3Xf//WreyTRUoAWgBgkOAGbZHBgG1OF6zM82DWbZaUmMBptgQhGjsyYqc9ae9XFz280948NMBWInljyzsNRFLPWdnZGWrddDsjK1unuSrVN9jJsK8KuQtQCtMBjCEtImISdNKJOopIpBFpNSMbIHCSRpRR5iakjTiyzLhchUUBwCgyKiweBv/7UsQbg8isVNoMPMjAAAA0gAAABEVFGmgqK////9bP/6XCykxBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'); el.volume = 0; el.play().catch(() => {}); } catch (e) {}
-  AU.unlocked = c.state === 'running';
+  AU.unlocked = c.state === 'running'; loadSfx();
 }
 ['touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, unlockAudio, { capture: true, passive: true }));
+// أصوات حقيقية: معلّق سعودي (Puck) + مواء بسس + مؤثرات — تتحمّل مرة وحدة بعد أول لمسة
+const SFXN = ['welcome', 'r_sleep', 'r_hungry', 'r_herd', 'c3', 'c2', 'c1', 'go', 'awake', 'busted', 'caught', 'fake', 'tunaeat', 'target', 'stamp', 'pick', 'crown', 'last10', 'meow', 'pop', 'whoosh', 'cheer'];
+const BUF = {}; let sfxLoading = false, voSrc = null;
+function loadSfx() {
+  const c = AU.ctx; if (!c || sfxLoading) return; sfxLoading = true;
+  SFXN.forEach(n => fetch('snd/' + n + '.mp3').then(r => r.arrayBuffer()).then(b => new Promise((res, rej) => c.decodeAudioData(b, res, rej))).then(buf => { BUF[n] = buf; if (n === 'welcome' && MODE === 'menu' && !AU.welcomed) { AU.welcomed = true; play('welcome', 1, true); } }).catch(() => {}));
+}
+function play(n, vol = 1, vo = false, rate = 1) {
+  const c = au(); if (!c || !BUF[n]) return false;
+  try { const s = c.createBufferSource(), g = c.createGain(); s.buffer = BUF[n]; s.playbackRate.value = rate; g.gain.value = vol; s.connect(g).connect(c.destination);
+    if (vo) { if (voSrc) try { voSrc.stop(); } catch (e) {} voSrc = s; } s.start(); return true; } catch (e) { return false; }
+}
+const VO = (n) => play(n, 1, true);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && AU.ctx) { AU.unlocked = false; try { AU.ctx.resume(); } catch (e) {} } });
 function tone(f1, f2, dur, type = 'sine', vol = .12, delay = 0) {
   const c = au(); if (!c) return; const t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
@@ -44,15 +57,16 @@ function tone(f1, f2, dur, type = 'sine', vol = .12, delay = 0) {
   o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + .02);
 }
 const SND = {
-  pick() { tone(520, 880, .09, 'sine', .1); }, bank() { tone(660, 660, .1, 'triangle', .12); tone(990, 990, .16, 'triangle', .12, .09); },
+  pick() { play('pop', .6, false, 1.15) || tone(520, 880, .09, 'sine', .1); }, bank() { tone(660, 660, .1, 'triangle', .12); tone(990, 990, .16, 'triangle', .12, .09); },
   bad() { tone(500, 180, .35, 'triangle', .12); }, caught() { tone(400, 90, .5, 'sawtooth', .07); },
-  stir() { tone(300, 340, .12, 'triangle', .08); tone(340, 300, .12, 'triangle', .08, .14); },
+  stir() { play('meow', .8) || (tone(300, 340, .12, 'triangle', .08), tone(340, 300, .12, 'triangle', .08, .14)); },
   awake() { tone(880, 880, .12, 'square', .07); tone(660, 660, .2, 'square', .07, .14); },
   memo() { tone(110, 60, .2, 'square', .12); tone(220, 220, .08, 'triangle', .08, .22); },
   tick() { tone(1000, 1000, .06, 'square', .05); }, go() { tone(1320, 1320, .25, 'square', .07); },
   stamp() { tone(90, 50, .25, 'square', .16); tone(140, 70, .15, 'triangle', .1, .05); },
   win() { [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, f, .3, 'triangle', .1, i * .15)); },
-  throw() { tone(400, 900, .15, 'sine', .1); } };
+  throw() { play('whoosh', .7) || tone(400, 900, .15, 'sine', .1); },
+  dash() { play('whoosh', .45, false, 1.3); } };
 
 // ───────────── الإدخال ─────────────
 const IN = { jx: 0, jy: 0, id: null, ox: 0, oy: 0, keys: {}, act: false };
@@ -124,7 +138,7 @@ function pushOut(o, cx, cy, r) { const dx = o.x - cx, dy = o.y - cy, m = Math.hy
 function doAct(p) { // زر الحركة: يرمي تونة لو معه، وإلا اندفاع
   if (S.ph !== 'play' || p.out) return;
   if (S.rd === 'hungry' && p.hold) { throwTuna(p); return; }
-  if (p.dashCd <= 0 && p.stun <= 0 && S.rd !== 'sleep') { p.dashT = .28; p.dashCd = 2.2; }
+  if (p.dashCd <= 0 && p.stun <= 0 && S.rd !== 'sleep') { p.dashT = .28; p.dashCd = 2.2; if (p.slot === ME.slot && !p.bot) SND.dash(); }
 }
 
 function stepSim(dt) {
@@ -284,7 +298,7 @@ function stepClient(dt) {
 }
 let actCount = 0;
 function clientMove(p, dt) {
-  if (IN.act) { IN.act = false; if (V.ph === 'play' && !p.out) { if (V.rd === 'hungry' && p.hold) { actCount++; SND.throw(); } else if (p.dashCd <= 0 && p.stun <= 0 && V.rd !== 'sleep') { p.dashT = .28; p.dashCd = 2.2; } } }
+  if (IN.act) { IN.act = false; if (V.ph === 'play' && !p.out) { if (V.rd === 'hungry' && p.hold) { actCount++; SND.throw(); } else if (p.dashCd <= 0 && p.stun <= 0 && V.rd !== 'sleep') { p.dashT = .28; p.dashCd = 2.2; SND.dash(); } } }
   if (V.ph !== 'play' || p.out || p.stun > 0) { p.mv = 0; return; }
   const dir = readDir(); let v = BASE_SPD * ROUNDS[V.rd].spd; if (V.rd === 'herd') { const cam = [...V.animals.values()].filter(a => a.own === ME.slot && a.k === 'c').length; v *= Math.max(.7, 1 - .1 * cam); } if (p.dashT > 0) v *= 2.4;
   let dx = dir.x, dy = dir.y; if (p.dashT > 0 && !dx && !dy) dx = p.f;
@@ -299,23 +313,23 @@ function onEvent(e) {
   const [, kind, x, y, txt, slot] = e, mine = slot === ME.slot;
   const pop = (c, big) => POPS.push({ x, y, txt, color: c, t: 0, big });
   switch (kind) {
-    case 'round': SND.memo(); break;
-    case 'count': SND.tick(); bigText(txt); break;
-    case 'go': SND.go(); bigText('يلا!'); break;
+    case 'round': SND.memo(); setTimeout(() => VO('r_' + txt), 500); break;
+    case 'count': if (!VO('c' + txt)) SND.tick(); bigText(txt); break;
+    case 'go': if (!VO('go')) SND.go(); bigText('يلا!'); break;
     case 'stir': SND.stir(); break;
-    case 'awake': SND.awake(); flash('#d93a2f'); bigText('وقّف! 👀'); break;
-    case 'fake': pop('#ffe14d', true); if (mine) { SND.bad(); toast(txt, 'bad'); } break;
+    case 'awake': if (!VO('awake')) SND.awake(); play('meow', .7, false, .8); flash('#d93a2f'); bigText('وقّف! 👀'); break;
+    case 'fake': pop('#ffe14d', true); if (mine) { if (!VO('fake')) SND.bad(); toast(txt, 'bad'); } break;
     case 'sleep': pop('#fff'); break;
-    case 'busted': pop('#ff8a7a', true); if (mine) { SND.bad(); toast(txt, 'bad'); flash('#d93a2f'); } break;
+    case 'busted': pop('#ff8a7a', true); if (mine) { if (!VO('busted')) SND.bad(); toast(txt, 'bad'); flash('#d93a2f'); } break;
     case 'tuna': if (mine) { SND.pick(); toast(txt, 'good'); } break;
-    case 'throw': pop('#ffe14d', true); burst(x, y, 8, ['#ff9ad5', '#fff']); if (mine) SND.throw(); break;
-    case 'caught': pop('#ff8a7a', true); burst(x, y, 12, ['#fff', '#d9d2c5'], 220); SND.caught(); if (mine) { toast('جاي صادك! 😵 اقعد تفرّج على الباقين', 'bad'); flash('#d93a2f'); } else toast(txt, 'info'); break;
+    case 'throw': pop('#ffe14d', true); burst(x, y, 8, ['#ff9ad5', '#fff']); play('meow', .6, false, 1.2); if (mine) { SND.throw(); VO('tunaeat'); } break;
+    case 'caught': pop('#ff8a7a', true); burst(x, y, 12, ['#fff', '#d9d2c5'], 220); play('meow', .9, false, .7) || SND.caught(); if (mine) { VO('caught'); toast('جاي صادك! 😵 اقعد تفرّج على الباقين', 'bad'); flash('#d93a2f'); } else toast(txt, 'info'); break;
     case 'pick': if (mine) { pop('#fff'); SND.pick(); } break;
     case 'bank': pop('#ffe14d', true); burst(x, y, 14, ['#ffe14d', '#fff', '#ffb14d']); if (mine) SND.bank(); break;
-    case 'target': if (mine) { SND.stir(); toast(txt, 'bad'); } break;
-    case 'scatter': pop('#ff9ad5', true); burst(x, y, 12, ['#fff', '#e3d9c8'], 220); if (mine) { SND.bad(); flash('#c2367f'); } break;
-    case 'stamp': SND.stamp(); break;
-    case 'crown': SND.win(); break;
+    case 'target': if (mine) { if (!VO('target')) SND.stir(); toast(txt, 'bad'); } break;
+    case 'scatter': pop('#ff9ad5', true); burst(x, y, 12, ['#fff', '#e3d9c8'], 220); play('meow', .8, false, .9); if (mine) { SND.bad(); flash('#c2367f'); } break;
+    case 'stamp': SND.stamp(); play('cheer', .5); if (mine) setTimeout(() => VO('stamp'), 400); break;
+    case 'crown': play('cheer', .8) || SND.win(); setTimeout(() => VO('crown'), 300); break;
     case 'info': toast(txt, 'info'); break;
   }
 }
@@ -438,7 +452,7 @@ let hudKey = '', uiKey = '';
 function hud() {
   const key = V.players.map(p => p.name + V.sp[p.slot] + (p.out ? 'x' : '') + (V.rd === 'herd' ? p.sc : '')).join(',') + V.rd;
   if (key !== hudKey) { hudKey = key; $('#chips').innerHTML = V.players.map(p => `<div class="chip${p.slot === ME.slot ? ' me' : ''}${p.out ? ' out' : ''}" style="--c:${COL[p.slot]}"><b>${'🏅'.repeat(Math.min(NEED, V.sp[p.slot])) + '<u>○</u>'.repeat(Math.max(0, NEED - V.sp[p.slot]))}</b><span>${esc(p.name)}${V.rd === 'herd' ? ' ' + p.sc : ''}</span></div>`).join(''); }
-  const sec = Math.max(0, Math.ceil(V.tm)), txt = V.ph === 'play' ? Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0') : '—'; const el = $('#timer'); if (el.textContent !== txt) { el.textContent = txt; el.classList.toggle('hot', V.ph === 'play' && sec <= 10); }
+  const sec = Math.max(0, Math.ceil(V.tm)), txt = V.ph === 'play' ? Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0') : '—'; const el = $('#timer'); if (el.textContent !== txt) { el.textContent = txt; el.classList.toggle('hot', V.ph === 'play' && sec <= 10); } if (V.ph === 'play' && sec === 10 && V.l10 !== V.rd + V.sp.join()) { V.l10 = V.rd + V.sp.join(); VO('last10'); }
   const rule = V.ph === 'play' || V.ph === 'intro' ? ROUNDS[V.rd].ic + ' ' + ROUNDS[V.rd].n : ''; if ($('#rule').textContent !== rule) $('#rule').textContent = rule;
   if (IN.id !== null && !IN.hid) { IN.hid = 1; $('#hint').style.display = 'none'; }
   const me = V.players[ME.slot], b = $('#act');
@@ -452,6 +466,7 @@ function hud() {
     c.querySelector('.rows').innerHTML = V.rk.map((s, i) => { const p = V.players[s]; return `<div class="rk" style="--c:${COL[s]}"><i>${i + 1}</i><span>${esc(p.name)}</span><b>${'🏅'.repeat(V.sp[s]) || '—'}</b></div>`; }).join('');
     c.classList.add('show'); }
   if (V.ph === 'pick') { const c = $('#pick'), p = V.players[V.pk], mine = V.pk === ME.slot;
+    if (mine) setTimeout(() => VO('pick'), 300);
     c.querySelector('.mt').textContent = mine ? 'جيت الأخير… اختار الجولة الجاية!' : p.name + ' جا الأخير… وهو اللي بيختار الجولة الجاية';
     c.querySelector('.opts').innerHTML = V.op.map(o => `<button class="opt" data-o="${o}" ${mine ? '' : 'disabled'}><i>${ROUNDS[o].ic}</i>${ROUNDS[o].n}</button>`).join('');
     c.querySelectorAll('.opt').forEach(b => b.onclick = () => { if (S) choose(b.dataset.o); else NET.emit('pick', { s: ME.slot, c: b.dataset.o }); c.querySelectorAll('.opt').forEach(x => x.disabled = true); b.classList.add('sel'); });
