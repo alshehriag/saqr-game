@@ -24,7 +24,7 @@ const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.r
 // ───────────── الصوت ─────────────
 const AU = { ctx: null, on: localStorage.getItem('farm-snd') !== '0' };
 function au() {
-  if (!AU.ctx) { try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {} try { AU.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (!AU.ctx) { try { if (navigator.audioSession && !VOICE.on) navigator.audioSession.type = 'playback'; } catch (e) {} try { AU.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
   if (AU.ctx && AU.ctx.state !== 'running') { try { AU.ctx.resume(); } catch (e) {} }
   return AU.on && AU.ctx ? AU.ctx : null;
 }
@@ -450,8 +450,8 @@ function drawJay(g, j, t) {
 // ───────────── الواجهة أثناء المباراة ─────────────
 let hudKey = '', uiKey = '';
 function hud() {
-  const key = V.players.map(p => p.name + V.sp[p.slot] + (p.out ? 'x' : '') + (V.rd === 'herd' ? p.sc : '')).join(',') + V.rd;
-  if (key !== hudKey) { hudKey = key; $('#chips').innerHTML = V.players.map(p => `<div class="chip${p.slot === ME.slot ? ' me' : ''}${p.out ? ' out' : ''}" style="--c:${COL[p.slot]}"><b>${'🏅'.repeat(Math.min(NEED, V.sp[p.slot])) + '<u>○</u>'.repeat(Math.max(0, NEED - V.sp[p.slot]))}</b><span>${esc(p.name)}${V.rd === 'herd' ? ' ' + p.sc : ''}</span></div>`).join(''); }
+  const key = V.players.map(p => p.name + (NET.list[p.slot] ? vBadge(NET.list[p.slot].u) : '') + V.sp[p.slot] + (p.out ? 'x' : '') + (V.rd === 'herd' ? p.sc : '')).join(',') + V.rd;
+  if (key !== hudKey) { hudKey = key; $('#chips').innerHTML = V.players.map(p => `<div class="chip${p.slot === ME.slot ? ' me' : ''}${p.out ? ' out' : ''}" style="--c:${COL[p.slot]}"><b>${'🏅'.repeat(Math.min(NEED, V.sp[p.slot])) + '<u>○</u>'.repeat(Math.max(0, NEED - V.sp[p.slot]))}</b><span>${esc(p.name)}${V.rd === 'herd' ? ' ' + p.sc : ''}${NET.list[p.slot] ? vBadge(NET.list[p.slot].u) : ''}</span></div>`).join(''); }
   const sec = Math.max(0, Math.ceil(V.tm)), txt = V.ph === 'play' ? Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0') : '—'; const el = $('#timer'); if (el.textContent !== txt) { el.textContent = txt; el.classList.toggle('hot', V.ph === 'play' && sec <= 10); } if (V.ph === 'play' && sec === 10 && V.l10 !== V.rd + V.sp.join()) { V.l10 = V.rd + V.sp.join(); VO('last10'); }
   const rule = V.ph === 'play' || V.ph === 'intro' ? ROUNDS[V.rd].ic + ' ' + ROUNDS[V.rd].n : ''; if ($('#rule').textContent !== rule) $('#rule').textContent = rule;
   if (IN.id !== null && !IN.hid) { IN.hid = 1; $('#hint').style.display = 'none'; }
@@ -529,20 +529,23 @@ function openRoom(host, code) {
   NET.r.on('in', d => { if (!NET.host || !S) return; const p = S.players[d.s]; if (!p || p.u !== d.u) return;
     if (d.tp === p.tp) { p.rx = d.x; p.ry = d.y; } p.f = d.f; p.mv = d.mv; p.seen = performance.now(); if (p.bot && p.wasHuman) p.bot = false;
     if (d.d && p.dashT <= 0) p.dashT = .2; if (d.a > p.act) { p.act = d.a; if (S.rd === 'hungry' && p.hold && S.ph === 'play') throwTuna(p); } });
+  NET.r.on('rtc', d => vSignal(d));
+  NET.r.on('vjoin', d => { if (d.to && d.to !== NET.uid) return; vJoin(d); });
+  NET.r.on('vstate', d => { if (d.u === NET.uid) return; VOICE.users[d.u] = { on: d.on, m: d.m }; if (!d.on) vClose(d.u); voiceUI(); });
   NET.r.on('pick', d => { if (NET.host && S && S.pick === d.s && S.players[d.s].u === d.u) choose(d.c); });
   NET.r.on('bye', d => { if (d.u === NET.uid) return; if (NET.host) { const i = NET.list.findIndex(x => x.u === d.u); if (i >= 0 && MODE !== 'play') { NET.list.splice(i, 1); drawLobby(); } }
     else if (NET.list[0] && NET.list[0].u === d.u) { toast('صاحب الغرفة طلع منها', 'bad'); if (MODE !== 'play') { netClose(); showScreen('menu'); } } });
   clearInterval(NET.iv); NET.iv = setInterval(() => { if (MODE === 'play') return;
     if (NET.host) { const now = performance.now(); NET.list = NET.list.filter(x => x.u === NET.uid || x.bot || now - (NET.seen[x.u] || now) < 6000); NET.emit('lobby', { list: NET.list }); drawLobby(); }
-    else NET.emit('hi', myProfile()); }, 1000);
+    else NET.emit('hi', myProfile()); if (VOICE.on && Math.random() < .25) NET.emit('vjoin', {}); }, 1000);
   if (!host) NET.emit('hi', myProfile());
   $('#code').textContent = code; showScreen('lobby'); drawLobby();
 }
-function netClose() { if (NET.r) { NET.emit('bye', {}); try { NET.r.leave(); } catch (e) {} } clearInterval(NET.iv); NET.r = null; }
+function netClose() { if (VOICE.on) { NET.emit('vstate', { on: false }); voiceOff(); } if (NET.r) { NET.emit('bye', {}); try { NET.r.leave(); } catch (e) {} } clearInterval(NET.iv); NET.r = null; }
 function lobbyMsg(t, c) { const el = $('#lobbyMsg'); el.textContent = t; el.className = 'msg ' + (c || ''); }
 function drawLobby() {
   const L = NET.list; let h = '';
-  for (let i = 0; i < 4; i++) { const p = L[i]; h += p ? `<div class="pl" style="--c:${COL[i]}"><img src="${SPR.IMG[(p.ch === 'h' ? 'herder' : 'farmer') + i].src}"><span>${esc(p.nm)}${p.u === NET.uid ? ' (أنت)' : ''}${i === 0 ? ' 👑' : ''}</span>${p.bot ? '<em>كمبيوتر</em>' : ''}${NET.host && p.bot ? `<button class="x" data-i="${i}">✕</button>` : ''}</div>` : `<div class="pl empty"><span>ننتظر لاعب…</span></div>`; }
+  for (let i = 0; i < 4; i++) { const p = L[i]; h += p ? `<div class="pl" style="--c:${COL[i]}"><img src="${SPR.IMG[(p.ch === 'h' ? 'herder' : 'farmer') + i].src}"><span>${esc(p.nm)}${p.u === NET.uid ? ' (أنت)' : ''}${i === 0 ? ' 👑' : ''}${vBadge(p.u)}</span>${p.bot ? '<em>كمبيوتر</em>' : ''}${NET.host && p.bot ? `<button class="x" data-i="${i}">✕</button>` : ''}</div>` : `<div class="pl empty"><span>ننتظر لاعب…</span></div>`; }
   $('#plist').innerHTML = h; document.querySelectorAll('#plist .x').forEach(b => b.onclick = () => { NET.list.splice(+b.dataset.i, 1); drawLobby(); });
   $('#hostCtl').style.display = NET.host ? '' : 'none'; $('#guestWait').style.display = NET.host ? 'none' : '';
   $('#startBtn').disabled = L.length < 2; $('#addBot').disabled = L.length >= 4; lobbyMsg(NET.host ? (L.length < 2 ? 'خلّك في اللعبة لين يدخلون — لو طلعت منها الغرفة توقف' : '') : (L.length ? '' : 'لحظة، قاعد أدخّلك الغرفة…'));
@@ -550,11 +553,65 @@ function drawLobby() {
 let botN = 0; const BOTNAMES = ['أبو بعير', 'راعي الغنم', 'أم سعيد', 'أبو فهد', 'شيخ الحلال', 'أبو تونة'];
 function botEntry(i) { botN++; return { u: 'bot' + botN, nm: BOTNAMES[botN % BOTNAMES.length], ch: (botN + i) % 2 ? 'f' : 'h', bot: 1 }; }
 
+
+// ───────────── المحادثة الصوتية (WebRTC بين الجوالات مباشرة، و Firebase بس للتعارف) ─────────────
+const VOICE = { on: false, muted: false, stream: null, pcs: {}, els: {}, users: {}, speak: {} };
+const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }];
+function vName(u) { const p = (NET.list || []).find(x => x.u === u); return p ? p.nm : 'لاعب'; }
+async function voiceOn() {
+  if (VOICE.on) { voiceMute(!VOICE.muted); return; }
+  if (!NET.r) { toast('الصوت يشتغل داخل غرفة أونلاين بس', 'info'); return; }
+  try {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
+    VOICE.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  } catch (e) { try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e2) {} toast('ما سمحت للمايك… افتح الإعدادات واسمح لـSafari بالمايك', 'bad'); return; }
+  VOICE.on = true; VOICE.muted = false; au(); unlockAudio(); watchLevel(NET.uid, VOICE.stream);
+  NET.emit('vjoin', {}); vState(); voiceUI(); toast('🎙️ الصوت شغّال — تكلم وربعك يسمعونك', 'good');
+}
+function voiceMute(m) { VOICE.muted = m; if (VOICE.stream) VOICE.stream.getAudioTracks().forEach(t => t.enabled = !m); vState(); voiceUI(); }
+function vState() { NET.emit('vstate', { on: VOICE.on, m: VOICE.muted }); VOICE.users[NET.uid] = { on: VOICE.on, m: VOICE.muted }; }
+function voiceOff() {
+  for (const u in VOICE.pcs) vClose(u); if (VOICE.stream) VOICE.stream.getTracks().forEach(t => t.stop());
+  VOICE.stream = null; VOICE.on = false; VOICE.users = {}; try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {} voiceUI();
+}
+function vClose(u) { try { VOICE.pcs[u].close(); } catch (e) {} delete VOICE.pcs[u]; const el = VOICE.els[u]; if (el) { el.srcObject = null; el.remove(); } delete VOICE.els[u]; }
+function vPeer(u) {
+  if (VOICE.pcs[u]) return VOICE.pcs[u];
+  const pc = new RTCPeerConnection({ iceServers: ICE }); VOICE.pcs[u] = pc;
+  VOICE.stream.getTracks().forEach(t => pc.addTrack(t, VOICE.stream));
+  pc.onicecandidate = e => { if (e.candidate) NET.emit('rtc', { to: u, c: e.candidate.toJSON() }); };
+  pc.ontrack = e => { let el = VOICE.els[u]; if (!el) { el = document.createElement('audio'); el.autoplay = true; el.setAttribute('playsinline', ''); document.body.appendChild(el); VOICE.els[u] = el; }
+    el.srcObject = e.streams[0]; el.play().catch(() => {}); watchLevel(u, e.streams[0]); };
+  pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') { vClose(u); if (NET.uid < u) setTimeout(() => vCall(u), 1500); } voiceUI(); };
+  return pc;
+}
+async function vCall(u) { if (!VOICE.on) return; const pc = vPeer(u); const o = await pc.createOffer(); await pc.setLocalDescription(o); NET.emit('rtc', { to: u, sdp: pc.localDescription.toJSON() }); }
+async function vSignal(d) {
+  if (!VOICE.on || d.to !== NET.uid) return; const u = d.u;
+  try {
+    if (d.sdp) { if (d.sdp.type === 'offer' && VOICE.pcs[u] && VOICE.pcs[u].signalingState !== 'stable') vClose(u);
+      const pc = vPeer(u); await pc.setRemoteDescription(d.sdp); (pc._q || []).forEach(c => pc.addIceCandidate(c).catch(() => {})); pc._q = [];
+      if (d.sdp.type === 'offer') { const a = await pc.createAnswer(); await pc.setLocalDescription(a); NET.emit('rtc', { to: u, sdp: pc.localDescription.toJSON() }); } }
+    else if (d.c) { const pc = VOICE.pcs[u]; if (pc && pc.remoteDescription) pc.addIceCandidate(d.c).catch(() => {}); else if (pc) (pc._q = pc._q || []).push(d.c); else { vPeer(u)._q = [d.c]; } }
+  } catch (e) {}
+}
+function vJoin(d) { if (d.u === NET.uid) return; VOICE.users[d.u] = { on: true, m: false }; voiceUI();
+  if (!VOICE.on || (VOICE.pcs[d.u] && VOICE.pcs[d.u].connectionState === 'connected')) return;
+  if (NET.uid < d.u) vCall(d.u); else NET.emit('vjoin', { to: d.u }); }
+function watchLevel(u, stream) { try { const c = AU.ctx; if (!c) return; const src = c.createMediaStreamSource(stream), an = c.createAnalyser(); an.fftSize = 256; src.connect(an); const buf = new Uint8Array(an.fftSize);
+  const tick = () => { if (!VOICE.on) return; an.getByteTimeDomainData(buf); let m = 0; for (const v of buf) m = Math.max(m, Math.abs(v - 128)); const was = VOICE.speak[u]; VOICE.speak[u] = m > 10; if (was !== VOICE.speak[u]) voiceUI(); setTimeout(tick, 120); }; tick(); } catch (e) {} }
+function voiceUI() {
+  const lab = '🎙️'; document.querySelectorAll('.micb').forEach(b => { b.classList.toggle('on', VOICE.on && !VOICE.muted); b.classList.toggle('mut', VOICE.on && VOICE.muted); b.querySelector('i') ? b.querySelector('i').textContent = lab : b.textContent = lab; });
+  const vb = $('#voiceBtn'); if (vb) vb.innerHTML = !VOICE.on ? '🎙️ شغّل الصوت وكلّم ربعك' : VOICE.muted ? '🔇 المايك مكتوم — اضغط عشان تتكلم' : '🎙️ الصوت شغّال — اضغط للكتم';
+  if (vb) vb.className = 'btn ' + (VOICE.on && !VOICE.muted ? 'g' : 'k');
+  hudKey = ''; if (MODE !== 'play' && $('#plist')) drawLobby();
+}
+function vBadge(u) { const s = VOICE.users[u]; if (!s || !s.on) return ''; return s.m ? ' 🔇' : VOICE.speak[u] ? ' 🗣️' : ' 🎙️'; }
 // ───────────── البدء ─────────────
 function resetPlay() { POPS.length = 0; PARTS.length = 0; hudKey = uiKey = ''; seenEv.clear(); IN.act = false; actCount = 0; document.querySelectorAll('.ov').forEach(o => o.classList.remove('show', 'fade')); }
 function startHost(list) { resetPlay(); ME.slot = Math.max(0, list.findIndex(x => x.u === NET.uid)); newView(list); newMatch(list); MODE = 'play'; showScreen('game'); if (NET.r) NET.emit('start', { list }); }
 function startClient(list, me) { resetPlay(); S = null; ME.slot = me; NET.list = list; newView(list); MODE = 'play'; showScreen('game'); }
-function showScreen(id) { document.querySelectorAll('.scr').forEach(s => s.classList.toggle('on', s.id === id)); document.body.classList.toggle('playing', id === 'game'); }
+function showScreen(id) { const m = $('#mic'); if (m) m.style.display = NET.r ? '' : 'none'; document.querySelectorAll('.scr').forEach(s => s.classList.toggle('on', s.id === id)); document.body.classList.toggle('playing', id === 'game'); }
 
 const PROF = { ch: localStorage.getItem('farm-ch') || 'f' };
 function initUI() {
@@ -574,6 +631,7 @@ function initUI() {
     if (navigator.share) navigator.share({ title: 'مزرعة الشيوخ', text: txt, url }).catch(() => {}); else { navigator.clipboard && navigator.clipboard.writeText(txt + '\n' + url); lobbyMsg('نسخت الدعوة، أرسلها لربعك', 'good'); } };
   $('#again').onclick = () => { if (!S) return; const list = NET.list.filter(x => x.bot || x.u === NET.uid || S.players.some(p => p.u === x.u && !p.bot)); if (list.length < 2) { MODE = 'menu'; showScreen(NET.r ? 'lobby' : 'menu'); return; } const go = () => startHost(list); NET.r ? NET.r.clear().then(go, go) : go(); };
   $('#toMenu').onclick = () => { MODE = 'menu'; S = null; V = null; document.querySelectorAll('.ov').forEach(o => o.classList.remove('show')); if (NET.r && NET.host) { showScreen('lobby'); drawLobby(); } else { netClose(); showScreen('menu'); } };
+  $('#voiceBtn').onclick = () => { au(); voiceOn(); }; $('#mic').onclick = e => { e.stopPropagation(); au(); voiceOn(); };
   $('#snd').onclick = () => { AU.on = !AU.on; localStorage.setItem('farm-snd', AU.on ? '1' : '0'); $('#snd').textContent = AU.on ? '🔊' : '🔇'; }; $('#snd').textContent = AU.on ? '🔊' : '🔇';
   let arm = 0; $('#quit').onclick = () => { if (Date.now() - arm > 2500) { arm = Date.now(); toast('اضغط مرة ثانية عشان تطلع', 'info'); return; } MODE = 'menu'; S = null; V = null; document.querySelectorAll('.ov').forEach(o => o.classList.remove('show')); netClose(); showScreen('menu'); };
   const m = location.search.match(/[?&]r=(\d{4})/); if (m) $('#joinCode').value = m[1];

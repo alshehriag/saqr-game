@@ -61,6 +61,7 @@ input:focus{border-color:#e4574b} input.err{border-color:#d93a2f;animation:sh .3
 .chip b{display:block;font-size:12px;min-height:18px;letter-spacing:-2px;white-space:nowrap;overflow:hidden}.chip b u{text-decoration:none;opacity:.6;font-size:13px;padding:0 1px}.chip span{display:block;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chip.me{outline:3px solid #fff}.chip.out{opacity:.5}
 #timer{background:#3b2a1a;color:#ffcc4d;font:800 22px Tajawal;padding:9px 12px;border-radius:16px;min-width:70px;text-align:center}
+.micb.on{background:#4f9d2a;box-shadow:0 3px 0 #2c5c14}.micb.mut{background:#c2367f}
 #timer.hot{background:#d93a2f;color:#fff;animation:pulse .5s infinite alternate}
 @keyframes pulse{to{transform:scale(1.08)}}
 .ib{pointer-events:auto;border:none;background:#fffaf0;border-radius:14px;width:42px;height:42px;font-size:20px;box-shadow:0 3px 0 #3b2a1a}
@@ -140,6 +141,7 @@ input:focus{border-color:#e4574b} input.err{border-color:#d93a2f;animation:sh .3
     <div class="lbl">رمز الغرفة</div>
     <div id="code">----</div>
     <button class="btn b" id="share">📤 أرسل الدعوة لربعك</button>
+    <button class="btn k" id="voiceBtn">🎙️ شغّل الصوت وكلّم ربعك</button>
   </div>
   <div class="card">
     <div class="lbl">اللاعبين (٢ إلى ٤)</div>
@@ -155,7 +157,7 @@ input:focus{border-color:#e4574b} input.err{border-color:#d93a2f;animation:sh .3
 </section>
 
 <section class="scr" id="game">
-  <div id="top"><button class="ib" id="quit">✕</button><div id="chips"></div><div id="timer">—</div><button class="ib" id="snd">🔊</button></div>
+  <div id="top"><button class="ib" id="quit">✕</button><div id="chips"></div><div id="timer">—</div><button class="ib micb" id="mic">🎙️</button><button class="ib" id="snd">🔊</button></div>
   <div id="rule"></div>
   <button id="act">اركض<br>💨</button>
   <div id="hint">اسحب بإصبعك<br>في أي مكان</div>
@@ -172,8 +174,8 @@ input:focus{border-color:#e4574b} input.err{border-color:#d93a2f;animation:sh .3
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="net-config.js?v=16"></script>
-<script src="sprites.js?v=16"></script>
-<script src="game.js?v=16"></script>
+<script src="net-config.js?v=17"></script>
+<script src="sprites.js?v=17"></script>
+<script src="game.js?v=17"></script>
 </body>
 </html>
