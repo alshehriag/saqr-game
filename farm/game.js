@@ -9,6 +9,8 @@ const COL = SPR.COLORS;
 const ROUNDS = {
   sleep: { n: 'لا تصحّون جاي', ic: '😴', d: 'امشوا لين توصلون باب البيت وجاي نايم. إذا فتح عيونه 👀 وقّفوا مكانكم… اللي يتحرك يرجع من أول!', time: 70, spd: .55 },
   hungry: { n: 'جاي جوعان', ic: '🐟', d: 'يلاحق الكل! اشردوا منه، ولمّوا علب التونة وارموها له عشان ينشغل… بس انتبهوا، فيه علب فاضية!', time: 75, spd: 1 },
+  hide: { n: 'وين جاي؟', ic: '🔍', d: 'جاي مختبي في واحد من أغراض الحوش! روحوا لأي غرض واضغطوا «فتّش». أول واحد يلقاه ٣ مرات يفوز… وانتبهوا لرشّة الماء 💦', time: 70, spd: 1 },
+  dinner: { n: 'عشا جاي', ic: '🍗', d: 'جاي جوعان ومزاجي! شوفوا وش يبي فوق راسه وجيبوا له نفس الأكل. لو جبتوا له غلط يرفسه 😾', time: 60, spd: 1 },
   herd: { n: 'جمّع القطيع', ic: '🐑', d: 'المسوا الخرفان وتمشي وراكم، ودخّلوها زرايبكم. البعير بثلاث نقاط. وانتبهوا: جاي يلاحق اللي معه أكبر قطيع!', time: 60, spd: 1 } };
 const RKEYS = Object.keys(ROUNDS);
 
@@ -106,13 +108,15 @@ function newMatch(list) {
 }
 function place(p, x, y) { p.x = x; p.y = y; p.rx = x; p.ry = y; p.tp++; p.hist = []; }
 function beginRound(k) {
-  const s = S; s.rd = k; s.ph = 'intro'; s.tm = 5; s.rTime = ROUNDS[k].time; s.animals = []; s.tunas = []; s.rank = []; s.win = -1; s.outOrder = []; s.played.push(k);
+  const s = S; s.objs = []; s.want = ''; s.players.forEach(p => p.food = ''); s.rd = k; s.ph = 'intro'; s.tm = 5; s.rTime = ROUNDS[k].time; s.animals = []; s.tunas = []; s.rank = []; s.win = -1; s.outOrder = []; s.played.push(k);
   const n = s.players.length, j = s.jay; j.f = 1; j.t = 0; j.angry = 0;
   s.players.forEach(p => { p.out = 0; p.stun = 0; p.hold = 0; p.trail = []; p.sc = 0; p.dashT = 0; p.mv = 0; p.ai = { t: 0 }; });
   if (k === 'sleep') { const xs = n === 2 ? [270, 450] : n === 3 ? [200, 360, 520] : [150, 290, 430, 570]; s.players.forEach((p, i) => place(p, xs[i], 1000)); Object.assign(j, { x: W / 2, y: 255, st: 'sleep', t: rnd(2.5, 4) }); }
   if (k === 'hungry') { const sp = [[150, 860], [570, 860], [150, 600], [570, 600]]; s.players.forEach((p, i) => place(p, sp[i][0], sp[i][1])); Object.assign(j, { x: W / 2, y: 200, st: 'chase', t: 0, tgt: -1, tgtT: 0 }); s.tunaT = 3; }
   if (k === 'herd') { s.players.forEach((p, i) => { const c = penC(i); place(p, PENS[i].g === 'r' ? PENS[i].x + PENS[i].w + 40 : PENS[i].x - 40, c.y); });
     for (let i = 0; i < 16; i++) spawnAnimal(i < 3 ? 'c' : 's'); Object.assign(j, { x: W / 2, y: H / 2, st: 'walk', t: 4, tx: W / 2, ty: H / 2, tgt: -1 }); }
+  if (k === 'hide') { const sp = [[200, 1010], [520, 1010], [120, 1010], [600, 1010]]; s.players.forEach((p, i) => place(p, sp[i][0], sp[i][1])); s.objs = SPOTS.map((q, i) => ({ id: i, k: q[2], x: q[0], y: q[1], st: 0, w: 0 })); s.hd = { jay: -1, next: .1, wig: 2, last: -1, tricks: [] }; Object.assign(j, { x: -200, y: -200, st: 'hidden' }); }
+  if (k === 'dinner') { const sp = [[150, 860], [570, 860], [150, 220], [570, 220]]; s.players.forEach((p, i) => { place(p, sp[i][0], sp[i][1]); p.food = ''; }); s.objs = []; for (let i = 0; i < 7; i++) spawnFood(); Object.assign(j, { x: W / 2, y: 520, st: 'sit', f: 1 }); s.want = 'f'; s.wantT = 6; }
   emit('round', W / 2, H / 2, k);
 }
 function endRound(rank) {
@@ -138,6 +142,7 @@ function pushOut(o, cx, cy, r) { const dx = o.x - cx, dy = o.y - cy, m = Math.hy
 function doAct(p) { // زر الحركة: يرمي تونة لو معه، وإلا اندفاع
   if (S.ph !== 'play' || p.out) return;
   if (S.rd === 'hungry' && p.hold) { throwTuna(p); return; }
+  if (S.rd === 'hide' && nearSpot(p, S.objs)) { hideSearch(p); return; }
   if (p.dashCd <= 0 && p.stun <= 0 && S.rd !== 'sleep') { p.dashT = .28; p.dashCd = 2.2; if (p.slot === ME.slot && !p.bot) SND.dash(); }
 }
 
@@ -156,7 +161,7 @@ function stepSim(dt) {
   }
   if (s.ph !== 'play') { if (s.rd === 'herd') stepAnimals(dt); return; }
   s.tm -= dt;
-  if (s.rd === 'sleep') stepSleep(dt); else if (s.rd === 'hungry') stepHungry(dt); else stepHerd(dt);
+  if (s.rd === 'sleep') stepSleep(dt); else if (s.rd === 'hungry') stepHungry(dt); else if (s.rd === 'hide') stepHide(dt); else if (s.rd === 'dinner') stepDinner(dt); else stepHerd(dt);
 }
 
 // ── جولة «لا تصحّون جاي» ──
@@ -232,10 +237,61 @@ function stepHerd(dt) {
   if (s.tm <= 0) endRound(shuffle(s.players.slice()).sort((a, b) => b.sc - a.sc).map(p => p.slot));
 }
 
+// ── جولة «وين جاي؟» ──
+const SPOTS = [[150, 250, 'box'], [570, 250, 'sofa'], [360, 400, 'basket'], [130, 560, 'barrel'], [590, 560, 'box'], [360, 710, 'sofa'], [160, 860, 'basket'], [560, 860, 'barrel']];
+function nearSpot(p, objs) { let best = null, bd = 78; for (const o of objs) { const st = o.st != null ? o.st : o[4]; const x = o.x != null ? o.x : o[2], y = o.y != null ? o.y : o[3]; if (st) continue; const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = o; } } return best; }
+function newHunt() { const h = S.hd; S.objs.forEach(o => { o.st = 0; o.w = 0; }); let i; do { i = Math.random() * SPOTS.length | 0; } while (i === h.last); h.jay = i; h.last = i;
+  const others = shuffle(SPOTS.map((_, k) => k).filter(k => k !== i)); h.tricks = others.slice(0, 2); h.wig = rnd(2, 3.5); S.jay.st = 'hidden'; S.jay.x = -200; emit('hunt', W / 2, H / 2, ''); }
+function hideSearch(p) {
+  const o = nearSpot(p, S.objs); if (!o || p.stun > 0 || S.hd.jay < 0 || S.ph !== 'play') return; const h = S.hd;
+  if (o.id === h.jay) { o.st = 3; p.sc++; S.jay.st = 'found'; S.jay.x = o.x; S.jay.y = o.y - 20; h.jay = -1; h.next = 1.8; emit('found', o.x, o.y, 'لقيت جاي! 🎉', p.slot);
+    if (p.sc >= 3) endRound(shuffle(S.players.slice()).sort((a, b) => b.sc - a.sc).map(q => q.slot)); }
+  else if (h.tricks.includes(o.id)) { o.st = 2; p.stun = 1.8; emit('splash', o.x, o.y, 'رشّة ماء! 💦', p.slot); }
+  else { o.st = 1; emit('empty', o.x, o.y, 'فاضي!', p.slot); }
+}
+function stepHide(dt) {
+  const s = S, h = s.hd;
+  if (h.jay < 0) { h.next -= dt; if (h.next <= 0) newHunt(); }
+  else { h.wig -= dt; s.objs.forEach(o => o.w = Math.max(0, o.w - dt)); if (h.wig <= 0) { h.wig = rnd(3, 5); const real = s.objs[h.jay]; if (!real.st) real.w = .6; if (Math.random() < .45) { const d = s.objs.filter(o => !o.st && o.id !== h.jay); if (d.length) d[Math.random() * d.length | 0].w = .6; } emit('meowhint', 0, 0, ''); } }
+  if (s.tm <= 0 && s.ph === 'play') endRound(shuffle(s.players.slice()).sort((a, b) => b.sc - a.sc).map(p => p.slot));
+}
+// ── جولة «عشا جاي» ──
+const FOODS = ['f', 'c', 't'], FOODN = { f: 'سمك', c: 'دجاج', t: 'تونة' }, FOODI = { f: 'fish', c: 'chicken', t: 'tuna' };
+function spawnFood(k) { let p; for (let n = 0; n < 30; n++) { p = { x: rnd(60, W - 60), y: rnd(90, H - 60) }; if (Math.hypot(p.x - W / 2, p.y - 520) > 170 && !S.players.some(q => dist(q, p) < 90)) break; }
+  S.objs.push({ id: S.nid++, k: k || FOODS[Math.random() * 3 | 0], x: p.x, y: p.y, by: -1 }); }
+function newWant() { const s = S, have = s.objs.map(o => o.k); let c = FOODS.filter(k => k !== s.want && have.includes(k)); if (!c.length) c = FOODS.filter(k => k !== s.want); s.want = c[Math.random() * c.length | 0]; s.wantT = rnd(6, 9); emit('want', W / 2, 440, s.want); }
+function stepDinner(dt) {
+  const s = S, j = s.jay; s.wantT -= dt; if (s.wantT <= 0) newWant();
+  for (const p of s.players) {
+    if (p.stun > 0) continue;
+    if (!p.food) { const o = s.objs.find(o => o.by < 0 && dist(o, p) < 36); if (o) { o.by = p.slot; p.food = o.k; emit('grab', p.x, p.y, '+' + FOODN[o.k], p.slot); } }
+    else if (dist(p, j) < 80) { const o = s.objs.find(o => o.by === p.slot);
+      if (p.food === s.want) { p.sc++; if (o) s.objs.splice(s.objs.indexOf(o), 1); p.food = ''; emit('yum', j.x, j.y - 40, 'جاي مبسوط 😻 +١', p.slot); spawnFood(); if (Math.random() < .6) newWant(); }
+      else { p.stun = .9; p.food = ''; if (o) { const an = rnd(0, 6.28); o.by = -1; o.x = clamp(j.x + Math.cos(an) * 230, 60, W - 60); o.y = clamp(j.y + Math.sin(an) * 230, 90, H - 60); } emit('kick', p.x, p.y, 'جاي ما يبي هذا! 😾', p.slot); } }
+    if (p.dashT > 0) for (const q of s.players) if (q !== p && q.food && q.stun <= 0 && dist(p, q) < 46) { const o = s.objs.find(o => o.by === q.slot); if (o) { o.by = -1; o.x = q.x + rnd(-40, 40); o.y = q.y + 40; } q.food = ''; q.stun = .5; emit('drop', q.x, q.y, 'طيّح أكله!', p.slot); }
+  }
+  for (const o of s.objs) if (o.by >= 0) { const p = s.players[o.by]; o.x = p.x; o.y = p.y - 46; }
+  if (s.objs.filter(o => o.by < 0).length < 5 && Math.random() < dt) spawnFood();
+  if (s.tm <= 0) endRound(shuffle(s.players.slice()).sort((a, b) => b.sc - a.sc).map(p => p.slot));
+}
+
 // ── الكمبيوتر ──
 function botThink(p, dt) {
   const s = S, ai = p.ai, j = s.jay; ai.t -= dt;
   if (s.ph !== 'play') { p.mv = 0; return; }
+  if (s.rd === 'hide') {
+    if (p.stun > 0) return; if (s.hd.jay < 0) { moveP(p, { x: 0, y: 0 }, dt); return; }
+    if (ai.t <= 0 || !ai.o || ai.o.st) { ai.t = rnd(.4, .8); const open = s.objs.filter(o => !o.st); const wig = open.find(o => o.w > 0 && Math.random() < .6);
+      ai.o = wig || open.sort((a, b) => dist(a, p) - dist(b, p))[Math.random() < .7 ? 0 : Math.min(1, open.length - 1)]; }
+    if (!ai.o) return; const d = dist(p, ai.o); if (d < 60) { ai.wait = (ai.wait || 0) + dt; if (ai.wait > rnd(.15, .5)) { ai.wait = 0; hideSearch(p); } moveP(p, { x: 0, y: 0 }, dt); return; }
+    moveP(p, { x: (ai.o.x - p.x) / d * .8, y: (ai.o.y - p.y) / d * .8 }, dt); return;
+  }
+  if (s.rd === 'dinner') {
+    if (p.stun > 0) return; let tg;
+    if (p.food) { if (p.food === s.want) tg = j; else { const an = p.slot * 1.6 + s.clock * .2; tg = { x: j.x + Math.cos(an) * 150, y: j.y + Math.sin(an) * 150 }; } }
+    else { const free = s.objs.filter(o => o.by < 0); tg = free.filter(o => o.k === s.want).sort((a, b) => dist(a, p) - dist(b, p))[0] || free.sort((a, b) => dist(a, p) - dist(b, p))[0]; }
+    if (!tg) return; const d = dist(p, tg); moveP(p, d < 6 ? { x: 0, y: 0 } : { x: (tg.x - p.x) / d * .78, y: (tg.y - p.y) / d * .78 }, dt); return;
+  }
   if (s.rd === 'sleep') {
     if (ai.spd == null) { ai.spd = rnd(.55, .95); ai.react = rnd(.12, .45); ai.greedy = Math.random() < .22; }
     let go = j.st === 'sleep' || j.st === 'fake' || (j.st === 'stir' && ai.greedy);
@@ -264,23 +320,25 @@ const ME = { slot: 0 };
 function snap() {
   const s = S, j = s.jay; return {
     ph: s.ph, rd: s.rd, tm: Math.ceil(s.tm * 10), sp: s.stamps, rk: s.rank, wn: s.win, pk: s.pick, op: s.opts, ch: s.champ,
-    P: s.players.map(p => [p.slot, p.x | 0, p.y | 0, p.f, Math.round(p.stun * 10), p.out, p.tp, p.hold, p.sc, p.bot ? 1 : 0, p.trail.length, p.dashT > 0 ? 1 : 0, p.mv > .1 ? 1 : 0]),
+    P: s.players.map(p => [p.slot, p.x | 0, p.y | 0, p.f, Math.round(p.stun * 10), p.out, p.tp, p.hold, p.sc, p.bot ? 1 : 0, p.trail.length, p.dashT > 0 ? 1 : 0, p.mv > .1 ? 1 : 0, p.food || '']),
     A: s.rd === 'herd' ? s.animals.map(a => [a.id, a.k, a.x | 0, a.y | 0, a.own, a.f]) : [],
     T: s.tunas.map(t => [t.id, t.x | 0, t.y | 0, t.thrown]),
+    O: (s.objs || []).map(o => [o.id, o.k, o.x | 0, o.y | 0, s.rd === 'hide' ? o.st : o.by, o.w > 0 ? 1 : 0]), W: s.want || '',
     J: [j.x | 0, j.y | 0, j.st, j.f, j.tgt == null ? -1 : j.tgt, j.angry > 0 ? 1 : 0],
     E: s.ev.map(o => o.e) };
 }
 let V = null; const seenEv = new Set();
 function newView(list) {
   V = { players: list.map((p, i) => ({ slot: i, name: p.nm, ch: p.ch, bot: !!p.bot, x: W / 2, y: H / 2, f: 1, stun: 0, out: 0, tp: -1, hold: 0, sc: 0, dashT: 0, dashCd: 0, mv: 0 })),
-    animals: new Map(), tunas: [], jay: { x: W / 2, y: H / 2, f: 1, st: 'sleep' }, ph: 'intro', rd: 'sleep', tm: 0, sp: list.map(() => 0), rk: [], wn: -1, pk: -1, op: [], ch: -1, lastSnap: performance.now() };
+    animals: new Map(), tunas: [], objs: [], want: '', jay: { x: W / 2, y: H / 2, f: 1, st: 'sleep' }, ph: 'intro', rd: 'sleep', tm: 0, sp: list.map(() => 0), rk: [], wn: -1, pk: -1, op: [], ch: -1, lastSnap: performance.now() };
 }
 function applySnap(d, direct) {
   V.lastSnap = performance.now(); Object.assign(V, { ph: d.ph, rd: d.rd, tm: d.tm / 10, sp: d.sp, rk: d.rk, wn: d.wn, pk: d.pk, op: d.op, ch: d.ch });
   for (const r of d.P) { const p = V.players[r[0]]; if (!p) continue; const self = r[0] === ME.slot && !direct;
     if (self) { if (p.tp !== r[6]) { p.tp = r[6]; p.x = r[1]; p.y = r[2]; } }
     else { if (direct || p.tp !== r[6]) { p.x = r[1]; p.y = r[2]; } p.tp = r[6]; p.tx = r[1]; p.ty = r[2]; p.f = r[3]; p.dashT = r[11] ? .1 : 0; p.mv = r[12]; }
-    p.stun = r[4] / 10; p.out = r[5]; p.hold = r[7]; p.sc = r[8]; p.bot = !!r[9]; p.tl = r[10]; }
+    p.stun = r[4] / 10; p.out = r[5]; p.hold = r[7]; p.sc = r[8]; p.bot = !!r[9]; p.tl = r[10]; p.food = r[13] || ''; }
+  V.objs = d.O || []; V.want = d.W || '';
   const ids = new Set();
   for (const r of d.A) { ids.add(r[0]); let a = V.animals.get(r[0]); if (!a) { a = { id: r[0], k: r[1], x: r[2], y: r[3] }; V.animals.set(r[0], a); } a.tx = r[2]; a.ty = r[3]; a.own = r[4]; a.f = r[5]; if (direct) { a.x = r[2]; a.y = r[3]; } }
   for (const id of V.animals.keys()) if (!ids.has(id)) V.animals.delete(id);
@@ -298,7 +356,7 @@ function stepClient(dt) {
 }
 let actCount = 0;
 function clientMove(p, dt) {
-  if (IN.act) { IN.act = false; if (V.ph === 'play' && !p.out) { if (V.rd === 'hungry' && p.hold) { actCount++; SND.throw(); } else if (p.dashCd <= 0 && p.stun <= 0 && V.rd !== 'sleep') { p.dashT = .28; p.dashCd = 2.2; SND.dash(); } } }
+  if (IN.act) { IN.act = false; if (V.ph === 'play' && !p.out) { if (V.rd === 'hungry' && p.hold) { actCount++; SND.throw(); } else if (V.rd === 'hide' && nearSpot(p, V.objs)) { actCount++; } else if (p.dashCd <= 0 && p.stun <= 0 && V.rd !== 'sleep') { p.dashT = .28; p.dashCd = 2.2; SND.dash(); } } }
   if (V.ph !== 'play' || p.out || p.stun > 0) { p.mv = 0; return; }
   const dir = readDir(); let v = BASE_SPD * ROUNDS[V.rd].spd; if (V.rd === 'herd') { const cam = [...V.animals.values()].filter(a => a.own === ME.slot && a.k === 'c').length; v *= Math.max(.7, 1 - .1 * cam); } if (p.dashT > 0) v *= 2.4;
   let dx = dir.x, dy = dir.y; if (p.dashT > 0 && !dx && !dy) dx = p.f;
@@ -328,6 +386,16 @@ function onEvent(e) {
     case 'bank': pop('#ffe14d', true); burst(x, y, 14, ['#ffe14d', '#fff', '#ffb14d']); if (mine) SND.bank(); break;
     case 'target': if (mine) { if (!VO('target')) SND.stir(); toast(txt, 'bad'); } break;
     case 'scatter': pop('#ff9ad5', true); burst(x, y, 12, ['#fff', '#e3d9c8'], 220); play('meow', .8, false, .9); if (mine) { SND.bad(); flash('#c2367f'); } break;
+    case 'found': pop('#ffe14d', true); burst(x, y, 16, ['#ffe14d', '#fff', '#ff9ad5']); play('meow', 1, false, 1.1); if (mine) SND.bank(); break;
+    case 'splash': pop('#7ab8e8', true); burst(x, y, 14, ['#7ab8e8', '#fff'], 200); if (mine) { SND.bad(); flash('#3d8bd9'); toast(txt, 'bad'); } break;
+    case 'empty': if (mine) { pop('#fff'); SND.pick(); } break;
+    case 'hunt': play('meow', .5, false, 1.3); break;
+    case 'meowhint': play('meow', .35, false, 1.25); break;
+    case 'want': SND.stir(); break;
+    case 'grab': if (mine) { pop('#fff'); SND.pick(); } break;
+    case 'yum': pop('#ffe14d', true); burst(x, y, 12, ['#ffe14d', '#ff9ad5', '#fff']); play('meow', .8, false, 1.15); if (mine) SND.bank(); break;
+    case 'kick': pop('#ff8a7a', true); play('meow', .9, false, .75); if (mine) { SND.bad(); toast(txt, 'bad'); } break;
+    case 'drop': pop('#ffb14d'); if (mine) SND.pick(); break;
     case 'stamp': SND.stamp(); play('cheer', .5); if (mine) setTimeout(() => VO('stamp'), 400); break;
     case 'crown': play('cheer', .8) || SND.win(); setTimeout(() => VO('crown'), 300); break;
     case 'info': toast(txt, 'info'); break;
@@ -388,6 +456,8 @@ function getBg(rd, n) {
   g.strokeStyle = 'rgba(59,42,26,.35)'; g.lineWidth = 4; rr(g, 2, 2, W - 4, H - 4, 32); g.stroke();
   if (rd === 'herd') for (let i = 0; i < n; i++) { const p = PENS[i]; g.save(); g.fillStyle = 'rgba(0,0,0,.12)'; rr(g, p.x + 4, p.y + 6, p.w, p.h, 16); g.fill(); g.fillStyle = g.createPattern(hayTile(), 'repeat'); rr(g, p.x, p.y, p.w, p.h, 16); g.fill(); fence(g, p, COL[i]); g.restore(); }
   if (rd === 'sleep') { spr(g, 'house', W / 2, 150, 1.25); [[90, 250], [W - 90, 250], [40, 600], [W - 40, 760]].forEach(([x, y]) => spr(g, 'palm', x, y, 1)); bush(110, 470, 22); bush(W - 100, 560, 20); bush(90, 880, 18); bush(W - 80, 950, 22); }
+  else if (rd === 'hide') { [[40, 120], [W - 40, 120], [40, 720], [W - 40, 760], [W / 2, 1060]].forEach(([x, y]) => spr(g, 'palm', x, y, .9)); bush(260, 560, 18); bush(460, 560, 18); }
+  else if (rd === 'dinner') { g.save(); g.translate(W / 2, 545); g.fillStyle = 'rgba(0,0,0,.12)'; g.beginPath(); g.ellipse(4, 8, 150, 70, 0, 0, 7); g.fill(); g.fillStyle = '#c8312b'; g.beginPath(); g.ellipse(0, 0, 150, 70, 0, 0, 7); g.fill(); g.fillStyle = '#1c1c1c'; g.beginPath(); g.ellipse(0, 0, 128, 56, 0, 0, 7); g.fill(); g.fillStyle = '#e2b33c'; for (let a = 0; a < 6.28; a += .35) { g.beginPath(); g.arc(Math.cos(a) * 139, Math.sin(a) * 63, 4, 0, 7); g.fill(); } g.fillStyle = '#f4e7c8'; g.beginPath(); g.ellipse(0, 0, 104, 44, 0, 0, 7); g.fill(); g.fillStyle = '#c8312b'; for (let k = -2; k <= 2; k++) { g.beginPath(); g.moveTo(k * 36 - 12, 0); g.lineTo(k * 36, -14); g.lineTo(k * 36 + 12, 0); g.lineTo(k * 36, 14); g.fill(); } g.restore(); [[60, 120], [W - 60, 120], [60, 980], [W - 60, 980]].forEach(([x, y]) => spr(g, 'palm', x, y, .9)); }
   else if (rd === 'hungry') { [[110, 330], [W - 110, 420], [W / 2 + 150, 760], [160, 980]].forEach(([x, y]) => spr(g, 'palm', x, y, .9)); bush(W - 90, 200, 22); bush(90, 700, 20); bush(W - 150, 990, 18); }
   else { [[300, 34], [425, H - 12], [30, H / 2 - 40], [W - 30, H / 2 - 130], [W / 2 + 130, 310], [220, H - 290]].forEach(([x, y]) => spr(g, 'palm', x, y, .9)); bush(W / 2 - 150, 360, 18); bush(W / 2 + 160, 730, 18); }
   return BG[key] = c;
@@ -404,6 +474,12 @@ function render() {
   g.textBaseline = 'alphabetic';
   for (const a of V.animals.values()) list.push({ y: a.y, d: () => { if (a.own >= 0) { g.globalAlpha = .35; g.fillStyle = COL[a.own]; g.beginPath(); g.ellipse(a.x, a.y + 14, 20, 6, 0, 0, 7); g.fill(); g.globalAlpha = 1; } const K = KIMG[a.k]; spr(g, K[0], a.x, a.y + Math.sin(t * 6 + a.id) * 1.2, K[1], a.f || 1); } });
   for (const tu of V.tunas) list.push({ y: tu[2], d: () => { if (!tu[3]) { g.fillStyle = 'rgba(255,240,140,.5)'; g.beginPath(); g.arc(tu[1], tu[2], 30 + Math.sin(t * 6) * 4, 0, 7); g.fill(); } spr(g, 'tuna', tu[1], tu[2] + (tu[3] ? 0 : Math.sin(t * 4) * 3), 1.1); } });
+  if (V.rd === 'hide') for (const o of V.objs) list.push({ y: o[3] + 20, d: () => { const wob = o[5] ? Math.sin(t * 50) * 4 : 0, img = o[1];
+      if (o[4] === 1 || o[4] === 2) g.globalAlpha = .45; spr(g, img, o[2] + wob, o[3], img === 'sofa' ? .9 : 1); g.globalAlpha = 1;
+      if (o[4] === 2) { g.font = '28px sans-serif'; g.textAlign = 'center'; g.fillText('💦', o[2], o[3] - 40); } else if (o[4] === 1) { g.font = '800 22px Tajawal'; g.textAlign = 'center'; g.fillStyle = '#5a3a1c'; g.fillText('✗', o[2], o[3] - 36); }
+      else if (!o[4]) { const me = V.players[ME.slot]; if (me && Math.hypot(me.x - o[2], me.y - o[3]) < 78) { g.strokeStyle = '#fff'; g.lineWidth = 4; g.setLineDash([8, 6]); g.beginPath(); g.ellipse(o[2], o[3] + 10, 52, 30, 0, 0, 7); g.stroke(); g.setLineDash([]); } } } });
+  if (V.rd === 'dinner') for (const o of V.objs) list.push({ y: o[4] >= 0 ? 9999 : o[3], d: () => { if (o[4] < 0) { g.fillStyle = 'rgba(255,240,140,.45)'; g.beginPath(); g.arc(o[2], o[3], 26, 0, 7); g.fill(); }
+      spr(g, FOODI[o[1]], o[2], o[3] + (o[4] < 0 ? Math.sin(t * 4 + o[0]) * 3 : 0), 1.05); } });
   V.players.forEach(p => list.push({ y: p.y, d: () => drawPlayer(g, p, t) }));
   list.push({ y: j.y + 20, d: () => drawJay(g, j, t) });
   list.sort((a, b) => a.y - b.y).forEach(o => o.d());
@@ -432,6 +508,11 @@ function drawPlayer(g, p, t) {
 function star(g, x, y, r) { g.beginPath(); for (let k = 0; k < 10; k++) { const a = k * Math.PI / 5 - Math.PI / 2, q = k % 2 ? r * .45 : r; g.lineTo(x + Math.cos(a) * q, y + Math.sin(a) * q); } g.closePath(); g.fill(); }
 function drawJay(g, j, t) {
   const st = j.st;
+  if (st === 'hidden') return;
+  if (st === 'found') { spr(g, 'jayWalk', j.x, j.y - Math.abs(Math.sin(t * 9)) * 14, .8, j.f || 1); g.font = '30px sans-serif'; g.textAlign = 'center'; g.fillText('😹', j.x, j.y - 70); return; }
+  if (st === 'sit') { g.fillStyle = '#e4574b'; g.beginPath(); g.ellipse(j.x + 70, j.y + 34, 30, 11, 0, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,.3)'; g.beginPath(); g.ellipse(j.x + 70, j.y + 31, 22, 6, 0, 0, 7); g.fill();
+    spr(g, 'jayWalk', j.x, j.y + Math.sin(t * 3) * 2, .95, Math.sin(t * .7) > 0 ? 1 : -1); const w = V.want; if (w) { const bx = j.x, by = j.y - 110, pul = 1 + Math.sin(t * 6) * .05; g.fillStyle = '#fff'; g.strokeStyle = '#3b2a1a'; g.lineWidth = 4; g.beginPath(); g.arc(bx, by, 40 * pul, 0, 7); g.fill(); g.stroke(); g.beginPath(); g.moveTo(bx - 10, by + 36); g.lineTo(bx, by + 56); g.lineTo(bx + 8, by + 36); g.fill(); spr(g, FOODI[w], bx, by + 4, 1.1 * pul); }
+    return; }
   if (st === 'sleep' || st === 'stir' || st === 'fake') {
     const wob = st === 'stir' || st === 'fake' ? Math.sin(t * 40) * 3 : 0; spr(g, 'jayFlop', j.x + wob, j.y, .62);
     g.textAlign = 'center';
@@ -450,14 +531,14 @@ function drawJay(g, j, t) {
 // ───────────── الواجهة أثناء المباراة ─────────────
 let hudKey = '', uiKey = '';
 function hud() {
-  const key = V.players.map(p => p.name + (NET.list[p.slot] ? vBadge(NET.list[p.slot].u) : '') + V.sp[p.slot] + (p.out ? 'x' : '') + (V.rd === 'herd' ? p.sc : '')).join(',') + V.rd;
-  if (key !== hudKey) { hudKey = key; $('#chips').innerHTML = V.players.map(p => `<div class="chip${p.slot === ME.slot ? ' me' : ''}${p.out ? ' out' : ''}" style="--c:${COL[p.slot]}"><b>${'🏅'.repeat(Math.min(NEED, V.sp[p.slot])) + '<u>○</u>'.repeat(Math.max(0, NEED - V.sp[p.slot]))}</b><span>${esc(p.name)}${V.rd === 'herd' ? ' ' + p.sc : ''}${NET.list[p.slot] ? vBadge(NET.list[p.slot].u) : ''}</span></div>`).join(''); }
+  const key = V.players.map(p => p.name + (NET.list[p.slot] ? vBadge(NET.list[p.slot].u) : '') + V.sp[p.slot] + (p.out ? 'x' : '') + (V.rd === 'herd' || V.rd === 'hide' || V.rd === 'dinner' ? p.sc : '')).join(',') + V.rd;
+  if (key !== hudKey) { hudKey = key; $('#chips').innerHTML = V.players.map(p => `<div class="chip${p.slot === ME.slot ? ' me' : ''}${p.out ? ' out' : ''}" style="--c:${COL[p.slot]}"><b>${'🏅'.repeat(Math.min(NEED, V.sp[p.slot])) + '<u>○</u>'.repeat(Math.max(0, NEED - V.sp[p.slot]))}</b><span>${esc(p.name)}${V.rd === 'herd' || V.rd === 'hide' || V.rd === 'dinner' ? ' ' + p.sc : ''}${NET.list[p.slot] ? vBadge(NET.list[p.slot].u) : ''}</span></div>`).join(''); }
   const sec = Math.max(0, Math.ceil(V.tm)), txt = V.ph === 'play' ? Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0') : '—'; const el = $('#timer'); if (el.textContent !== txt) { el.textContent = txt; el.classList.toggle('hot', V.ph === 'play' && sec <= 10); } if (V.ph === 'play' && sec === 10 && V.l10 !== V.rd + V.sp.join()) { V.l10 = V.rd + V.sp.join(); VO('last10'); }
   const rule = V.ph === 'play' || V.ph === 'intro' ? ROUNDS[V.rd].ic + ' ' + ROUNDS[V.rd].n : ''; if ($('#rule').textContent !== rule) $('#rule').textContent = rule;
   if (IN.id !== null && !IN.hid) { IN.hid = 1; $('#hint').style.display = 'none'; }
   const me = V.players[ME.slot], b = $('#act');
-  const lbl = V.rd === 'sleep' ? 'بشويش' : V.rd === 'hungry' && me && me.hold ? 'ارمها<br>🐟' : 'اركض<br>💨'; if (b.dataset.l !== lbl) { b.dataset.l = lbl; b.innerHTML = lbl; }
-  b.style.display = V.rd === 'sleep' ? 'none' : ''; b.classList.toggle('cd', (!(me && me.hold && V.rd === 'hungry') && !!me && me.dashCd > 0)); b.classList.toggle('tuna', !!(me && me.hold && V.rd === 'hungry'));
+  const lbl = V.rd === 'sleep' ? 'بشويش' : V.rd === 'hungry' && me && me.hold ? 'ارمها<br>🐟' : V.rd === 'hide' && me && nearSpot(me, V.objs) ? 'فتّش<br>🔍' : 'اركض<br>💨'; if (b.dataset.l !== lbl) { b.dataset.l = lbl; b.innerHTML = lbl; }
+  b.style.display = V.rd === 'sleep' ? 'none' : ''; b.classList.toggle('cd', (!(me && me.hold && V.rd === 'hungry') && !!me && me.dashCd > 0)); b.classList.toggle('tuna', !!(me && ((me.hold && V.rd === 'hungry') || (V.rd === 'hide' && nearSpot(me, V.objs)))));
   const k = V.ph + '|' + V.rd + '|' + V.wn + '|' + V.pk + '|' + V.op.join() + '|' + V.ch; if (k === uiKey) return; uiKey = k;
   document.querySelectorAll('.ov').forEach(o => o.classList.remove('show', 'fade'));
   if (V.ph === 'intro') { const R = ROUNDS[V.rd], c = $('#intro'); c.querySelector('.ic').textContent = R.ic; c.querySelector('.mt').textContent = R.n; c.querySelector('.md').textContent = R.d;
@@ -528,7 +609,7 @@ function openRoom(host, code) {
   NET.r.on('st', d => { if (NET.host || d.u === NET.uid || MODE !== 'play' || !V) return; applySnap(d, false); });
   NET.r.on('in', d => { if (!NET.host || !S) return; const p = S.players[d.s]; if (!p || p.u !== d.u) return;
     if (d.tp === p.tp) { p.rx = d.x; p.ry = d.y; } p.f = d.f; p.mv = d.mv; p.seen = performance.now(); if (p.bot && p.wasHuman) p.bot = false;
-    if (d.d && p.dashT <= 0) p.dashT = .2; if (d.a > p.act) { p.act = d.a; if (S.rd === 'hungry' && p.hold && S.ph === 'play') throwTuna(p); } });
+    if (d.d && p.dashT <= 0) p.dashT = .2; if (d.a > p.act) { p.act = d.a; if (S.ph === 'play') { if (S.rd === 'hungry' && p.hold) throwTuna(p); else if (S.rd === 'hide') { p.x = p.rx; p.y = p.ry; hideSearch(p); } } } });
   NET.r.on('rtc', d => vSignal(d));
   NET.r.on('vjoin', d => { if (d.to && d.to !== NET.uid) return; vJoin(d); });
   NET.r.on('vstate', d => { if (d.u === NET.uid) return; VOICE.users[d.u] = { on: d.on, m: d.m }; if (!d.on) vClose(d.u); voiceUI(); });

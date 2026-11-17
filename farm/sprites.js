@@ -126,6 +126,41 @@
     <rect x="-18" y="-4" width="36" height="12" fill="#2e78c7"/>
     <path d="M-9 2 q7 -6 14 0 q-7 6 -14 0z M5 2 l5 -4 v8z" fill="#ffcf4a"/>
     <circle cx="-5" cy="1" r="1.2" fill="#222"/>`);
+  // أغراض الغميضة
+  SVG.box = wrap('-44 -46 88 80', `
+    <ellipse cx="0" cy="28" rx="40" ry="7" fill="#000" opacity=".18"/>
+    <path d="M-36 -10 L0 -24 L36 -10 L36 26 L0 34 L-36 26z" fill="#c9965a" stroke="#7a5228" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M-36 -10 L0 4 L36 -10 M0 4 V34" stroke="#7a5228" stroke-width="3" fill="none"/>
+    <path d="M-36 -10 L-44 -26 L-8 -40 L0 -24z M36 -10 L44 -26 L8 -40 L0 -24z" fill="#ddb077" stroke="#7a5228" stroke-width="3" stroke-linejoin="round"/>
+    <rect x="-24" y="10" width="16" height="6" fill="#e9d2ad" transform="skewY(-20)"/>`);
+  SVG.basket = wrap('-40 -48 80 82', `
+    <ellipse cx="0" cy="28" rx="34" ry="7" fill="#000" opacity=".18"/>
+    <path d="M-30 -20 L30 -20 L24 28 L-24 28z" fill="#d9b26a" stroke="#8a6326" stroke-width="3" stroke-linejoin="round"/>
+    <g stroke="#a87d3a" stroke-width="2.5"><path d="M-28 -6 H28 M-26 8 H26 M-25 20 H25"/><path d="M-14 -20 L-12 28 M0 -20 V28 M14 -20 L12 28"/></g>
+    <path d="M-26 -22 q8 -18 20 -6 q8 -14 18 -2 q10 -10 14 6z" fill="#7ab8e8" stroke="#3d7aa8" stroke-width="2"/>
+    <path d="M-6 -30 q10 -12 22 2" fill="#f2a7c3" stroke="#b5587f" stroke-width="2"/>`);
+  SVG.sofa = wrap('-56 -44 112 76', `
+    <ellipse cx="0" cy="26" rx="52" ry="7" fill="#000" opacity=".18"/>
+    <rect x="-50" y="-30" width="100" height="40" rx="12" fill="#b23a3a" stroke="#6e1f1f" stroke-width="3"/>
+    <rect x="-52" y="4" width="104" height="22" rx="8" fill="#c94a4a" stroke="#6e1f1f" stroke-width="3"/>
+    <g fill="#e2b33c"><path d="M-40 -20 l6 -6 l6 6 l-6 6z M-6 -20 l6 -6 l6 6 l-6 6z M28 -20 l6 -6 l6 6 l-6 6z"/></g>
+    <path d="M-50 12 H50" stroke="#1c1c1c" stroke-width="2" stroke-dasharray="6 4"/>`);
+  SVG.barrel = wrap('-36 -48 72 84', `
+    <ellipse cx="0" cy="30" rx="30" ry="7" fill="#000" opacity=".18"/>
+    <path d="M-26 -34 Q-34 0 -26 30 L26 30 Q34 0 26 -34z" fill="#3d8bd9" stroke="#1f5a99" stroke-width="3"/>
+    <ellipse cx="0" cy="-34" rx="26" ry="8" fill="#5fa3e6" stroke="#1f5a99" stroke-width="3"/>
+    <g stroke="#1f5a99" stroke-width="3" fill="none"><path d="M-30 -12 Q0 -6 30 -12"/><path d="M-30 12 Q0 18 30 12"/></g>`);
+  // أكل جاي
+  SVG.fish = wrap('-34 -22 68 44', `
+    <ellipse cx="0" cy="14" rx="26" ry="5" fill="#000" opacity=".15"/>
+    <path d="M-22 0 q18 -18 40 0 q-22 18 -40 0z" fill="#8fc6e8" stroke="#3d7aa8" stroke-width="2.5"/>
+    <path d="M-20 0 l-12 -10 v20z" fill="#8fc6e8" stroke="#3d7aa8" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="10" cy="-3" r="2.6" fill="#1c1c1c"/><path d="M-4 -6 q4 6 0 12" stroke="#3d7aa8" stroke-width="2" fill="none"/>`);
+  SVG.chicken = wrap('-30 -30 60 56', `
+    <ellipse cx="0" cy="20" rx="22" ry="5" fill="#000" opacity=".15"/>
+    <path d="M-4 -24 q22 -4 22 16 q0 14 -18 16 l-10 10 q-6 6 -10 0 q-6 -2 -2 -8 l10 -10 q-10 -20 8 -24z" fill="#d98a3a" stroke="#8a4e16" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="-18" cy="16" r="5" fill="#fff4e0" stroke="#b8a888" stroke-width="2"/><circle cx="-12" cy="22" r="5" fill="#fff4e0" stroke="#b8a888" stroke-width="2"/>
+    <path d="M2 -16 q8 -2 10 6" stroke="#f2b26a" stroke-width="3" fill="none"/>`);
   for (let i = 0; i < 4; i++) { SVG['farmer' + i] = farmer(COLORS[i], DARK[i]); SVG['herder' + i] = herder(COLORS[i], DARK[i]); }
 
   const IMG = {}; let left = 0;
