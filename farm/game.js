@@ -512,7 +512,7 @@ const LOCAL = /[?&]local=1/.test(location.search);
 function myProfile() { return { u: NET.uid, nm: (($('#name').value || '').trim() || 'لاعب').slice(0, 12), ch: PROF.ch }; }
 function openRoom(host, code) {
   const api = LOCAL ? localRoom() : fbRoom(); if (!api) { toast('ما قدرت أتصل بالسيرفر، شيّك على النت.', 'bad'); return; }
-  netClose(); NET.host = host; NET.code = code; NET.r = api.join('saqr-pvp-farm' + code, host); // قواعد Firebase تسمح بس بالغرف اللي تبدأ بـ saqr-pvp- NET.list = host ? [myProfile()] : []; NET.seen = {};
+  netClose(); NET.host = host; NET.code = code; NET.r = api.join('saqr-pvp-farm' + code, host); NET.list = host ? [myProfile()] : []; NET.seen = {}; // قواعد Firebase تسمح بس بالغرف اللي تبدأ بـ saqr-pvp-
   NET.r.on('hi', d => { if (!NET.host || d.u === NET.uid) return; NET.seen[d.u] = performance.now();
     let e = NET.list.find(x => x.u === d.u); if (!e) { if (NET.list.length >= 4 || MODE === 'play') { NET.emit('full', { to: d.u }); return; } NET.list.push(e = { u: d.u }); } e.nm = String(d.nm || '').slice(0, 12); e.ch = d.ch; drawLobby(); });
   NET.r.on('lobby', d => { if (NET.host || d.u === NET.uid) return; NET.list = d.list; drawLobby(); });
