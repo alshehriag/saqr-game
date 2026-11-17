@@ -49,7 +49,7 @@ function play(n, vol = 1, vo = false, rate = 1) {
     if (vo) { if (voSrc) try { voSrc.stop(); } catch (e) {} voSrc = s; } s.start(); return true; } catch (e) { return false; }
 }
 const VO = (n) => play(n, 1, true);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && AU.ctx) { AU.unlocked = false; try { AU.ctx.resume(); } catch (e) {} } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && NET.r && NET.host && MODE !== 'play') NET.emit('lobby', { list: NET.list }); if (!document.hidden && AU.ctx) { AU.unlocked = false; try { AU.ctx.resume(); } catch (e) {} } });
 function tone(f1, f2, dur, type = 'sine', vol = .12, delay = 0) {
   const c = au(); if (!c) return; const t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
   o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
@@ -545,7 +545,7 @@ function drawLobby() {
   for (let i = 0; i < 4; i++) { const p = L[i]; h += p ? `<div class="pl" style="--c:${COL[i]}"><img src="${SPR.IMG[(p.ch === 'h' ? 'herder' : 'farmer') + i].src}"><span>${esc(p.nm)}${p.u === NET.uid ? ' (أنت)' : ''}${i === 0 ? ' 👑' : ''}</span>${p.bot ? '<em>كمبيوتر</em>' : ''}${NET.host && p.bot ? `<button class="x" data-i="${i}">✕</button>` : ''}</div>` : `<div class="pl empty"><span>ننتظر لاعب…</span></div>`; }
   $('#plist').innerHTML = h; document.querySelectorAll('#plist .x').forEach(b => b.onclick = () => { NET.list.splice(+b.dataset.i, 1); drawLobby(); });
   $('#hostCtl').style.display = NET.host ? '' : 'none'; $('#guestWait').style.display = NET.host ? 'none' : '';
-  $('#startBtn').disabled = L.length < 2; $('#addBot').disabled = L.length >= 4; if (!NET.host) lobbyMsg(L.length ? '' : 'لحظة، قاعد أدخّلك الغرفة…');
+  $('#startBtn').disabled = L.length < 2; $('#addBot').disabled = L.length >= 4; lobbyMsg(NET.host ? (L.length < 2 ? 'خلّك في اللعبة لين يدخلون — لو طلعت منها الغرفة توقف' : '') : (L.length ? '' : 'لحظة، قاعد أدخّلك الغرفة…'));
 }
 let botN = 0; const BOTNAMES = ['أبو بعير', 'راعي الغنم', 'أم سعيد', 'أبو فهد', 'شيخ الحلال', 'أبو تونة'];
 function botEntry(i) { botN++; return { u: 'bot' + botN, nm: BOTNAMES[botN % BOTNAMES.length], ch: (botN + i) % 2 ? 'f' : 'h', bot: 1 }; }
