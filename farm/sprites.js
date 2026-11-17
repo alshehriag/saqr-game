@@ -101,6 +101,31 @@
     <rect x="-5" y="-40" width="10" height="44" rx="4" fill="#8a5a2b"/>
     <g fill="#3f8f2a"><path d="M0 -42 q-34 -6 -46 10 q20 -14 46 -6z"/><path d="M0 -42 q34 -6 46 10 q-20 -14 -46 -6z"/><path d="M0 -44 q-18 -26 -38 -24 q22 4 38 24z"/><path d="M0 -44 q18 -26 38 -24 q-22 4 -38 24z"/></g>
     <circle cx="-3" cy="-38" r="4" fill="#c8641c"/><circle cx="4" cy="-37" r="4" fill="#c8641c"/>`);
+  // جاي صاحي: نفس الانبطاحة بس عيونه مفتوحة 👀
+  SVG.jayAwake = SVG.jayFlop.replace('<path d="M-22 72 q8 6 16 0 M6 72 q8 6 16 0" stroke="#5b534c" stroke-width="3.5" fill="none" stroke-linecap="round"/>',
+    '<g><circle cx="-14" cy="72" r="11" fill="#d8f06a" stroke="#5b534c" stroke-width="3"/><circle cx="14" cy="72" r="11" fill="#d8f06a" stroke="#5b534c" stroke-width="3"/><ellipse cx="-14" cy="73" rx="3.5" ry="8" fill="#1c1c1c"/><ellipse cx="14" cy="73" rx="3.5" ry="8" fill="#1c1c1c"/><circle cx="-11" cy="68" r="2.5" fill="#fff"/><circle cx="17" cy="68" r="2.5" fill="#fff"/></g>');
+  // بيت نجدي طين مع باب ملوّن
+  SVG.house = wrap('-150 -120 300 150', `
+    <ellipse cx="0" cy="24" rx="150" ry="10" fill="#000" opacity=".15"/>
+    <rect x="-140" y="-70" width="280" height="92" rx="6" fill="#c98d55"/>
+    <rect x="-140" y="-70" width="280" height="14" fill="#b57a45"/>
+    <g fill="#f3e6cf">${Array.from({ length: 14 }, (_, i) => `<path d="M${-140 + i * 20} -70 l10 -18 l10 18z"/>`).join('')}</g>
+    <rect x="-60" y="-118" width="120" height="50" rx="4" fill="#c98d55"/>
+    <g fill="#f3e6cf">${Array.from({ length: 6 }, (_, i) => `<path d="M${-60 + i * 20} -118 l10 -14 l10 14z"/>`).join('')}</g>
+    <g fill="#5a3a1c"><path d="M-110 -30 l10 -16 l10 16z"/><path d="M90 -30 l10 -16 l10 16z"/><path d="M-80 -30 l10 -16 l10 16z"/><path d="M60 -30 l10 -16 l10 16z"/><path d="M-20 -96 l10 -14 l10 14z"/><path d="M0 -96 l10 -14 l10 14z"/></g>
+    <rect x="-30" y="-44" width="60" height="66" rx="3" fill="#7a3d1c" stroke="#5a2a10" stroke-width="3"/>
+    <rect x="-24" y="-38" width="48" height="54" fill="#2f7a6a"/>
+    <path d="M-24 -38 l12 12 l12 -12 l12 12 l12 -12 v12 l-12 12 l-12 -12 l-12 12 l-12 -12z" fill="#e2b33c"/>
+    <path d="M-24 0 l12 12 l12 -12 l12 12 l12 -12 v16 h-48z" fill="#c8312b"/>
+    <circle cx="16" cy="-6" r="3" fill="#e2b33c"/>
+    <rect x="-24" y="-12" width="48" height="6" fill="#f3e6cf"/>`);
+  SVG.tuna = wrap('-24 -24 48 44', `
+    <ellipse cx="0" cy="14" rx="20" ry="5" fill="#000" opacity=".18"/>
+    <rect x="-18" y="-10" width="36" height="22" rx="4" fill="#cfd6dc" stroke="#7d8a95" stroke-width="2"/>
+    <ellipse cx="0" cy="-10" rx="18" ry="6" fill="#e9eef2" stroke="#7d8a95" stroke-width="2"/>
+    <rect x="-18" y="-4" width="36" height="12" fill="#2e78c7"/>
+    <path d="M-9 2 q7 -6 14 0 q-7 6 -14 0z M5 2 l5 -4 v8z" fill="#ffcf4a"/>
+    <circle cx="-5" cy="1" r="1.2" fill="#222"/>`);
   for (let i = 0; i < 4; i++) { SVG['farmer' + i] = farmer(COLORS[i], DARK[i]); SVG['herder' + i] = herder(COLORS[i], DARK[i]); }
 
   const IMG = {}; let left = 0;
