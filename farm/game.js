@@ -7,9 +7,9 @@ const PENS = [
   { x: 16, y: 842, w: 210, h: 170, g: 'r' }, { x: 494, y: 842, w: 210, h: 170, g: 'l' }];
 const COL = SPR.COLORS;
 const ROUNDS = {
-  sleep: { n: 'لا تصحّون جاي', ic: '😴', d: 'امشوا لين باب البيت وجاي نايم. إذا فتح عيونه 👀 لا تتحركون… اللي يتحرك يرجع للبداية!', time: 70, spd: .55 },
-  hungry: { n: 'جاي جوعان', ic: '🐟', d: 'جاي يطارد الكل! اهربوا منه. القطوا التونة واضغطوا «ارمِ» عشان يلتهي… بس بعضها فاضي!', time: 75, spd: 1 },
-  herd: { n: 'جمّع القطيع', ic: '🐑', d: 'المسوا الخرفان وتمشي وراكم، ودخّلوها حظائركم. الجمل بثلاث. وجاي يطارد صاحب أكبر قطيع!', time: 60, spd: 1 } };
+  sleep: { n: 'لا تصحّون جاي', ic: '😴', d: 'امشوا لين توصلون باب البيت وجاي نايم. إذا فتح عيونه 👀 وقّفوا مكانكم… اللي يتحرك يرجع من أول!', time: 70, spd: .55 },
+  hungry: { n: 'جاي جوعان', ic: '🐟', d: 'يلاحق الكل! اشردوا منه، ولمّوا علب التونة وارموها له عشان ينشغل… بس انتبهوا، فيه علب فاضية!', time: 75, spd: 1 },
+  herd: { n: 'جمّع القطيع', ic: '🐑', d: 'المسوا الخرفان وتمشي وراكم، ودخّلوها زرايبكم. البعير بثلاث نقاط. وانتبهوا: جاي يلاحق اللي معه أكبر قطيع!', time: 60, spd: 1 } };
 const RKEYS = Object.keys(ROUNDS);
 
 const $ = s => document.querySelector(s);
@@ -117,7 +117,7 @@ function doAct(p) { // زر الحركة: يرمي تونة لو معه، وإل
 function stepSim(dt) {
   const s = S; s.clock += dt; s.ev = s.ev.filter(o => s.clock - o.t < 2.5);
   for (const p of s.players) { p.stun = Math.max(0, p.stun - dt); p.dashT = Math.max(0, p.dashT - dt); p.dashCd -= dt;
-    if (!p.bot && p.slot !== ME.slot && performance.now() - p.seen > 7000) { p.bot = true; emit('info', p.x, p.y, 'انقطع ' + p.name + ' — الكمبيوتر يلعب مكانه'); } }
+    if (!p.bot && p.slot !== ME.slot && performance.now() - p.seen > 7000) { p.bot = true; emit('info', p.x, p.y, 'النت فصل عند ' + p.name + ' — الكمبيوتر يلعب بداله'); } }
   if (s.ph === 'intro') { const before = Math.ceil(s.tm); s.tm -= dt; if (Math.ceil(s.tm) !== before && s.tm > 0 && s.tm <= 3) emit('count', 0, 0, String(Math.ceil(s.tm))); if (s.tm <= 0) { s.ph = 'play'; s.tm = s.rTime; emit('go', 0, 0, ''); } }
   else if (s.ph === 'result') { s.tm -= dt; if (s.tm <= 0) afterResult(); }
   else if (s.ph === 'pick') { s.tm -= dt; if (s.players[s.pick].bot && s.tm < 1) choose(s.opts[Math.random() * 2 | 0]); else if (s.tm <= 0) choose(s.opts[0]); }
@@ -137,14 +137,14 @@ function stepSleep(dt) {
   const s = S, j = s.jay; j.t -= dt;
   if (j.t <= 0) {
     if (j.st === 'sleep') { if (Math.random() < .28) { j.st = 'fake'; j.t = .7; } else { j.st = 'stir'; j.t = .75; } emit('stir', j.x, j.y, ''); }
-    else if (j.st === 'fake') { j.st = 'sleep'; j.t = rnd(1.4, 3.5); emit('fake', j.x, j.y - 90, 'ههه… رجع نام 😴'); }
+    else if (j.st === 'fake') { j.st = 'sleep'; j.t = rnd(1.4, 3.5); emit('fake', j.x, j.y - 90, 'هههه… رجع نام 😴'); }
     else if (j.st === 'stir') { j.st = 'awake'; j.t = rnd(1.7, 2.8); j.grace = .5; s.players.forEach(p => p.ref = null); emit('awake', j.x, j.y, ''); }
     else { j.st = 'sleep'; j.t = rnd(1.5, 4.2); emit('sleep', j.x, j.y - 90, 'Zzz…'); }
   }
   if (j.st === 'awake') { j.grace -= dt;
     if (j.grace <= 0) for (const p of s.players) { const q = p.slot === ME.slot || p.bot ? p : { x: p.rx, y: p.ry };
       if (!p.ref) { p.ref = { x: q.x, y: q.y }; continue; }
-      if (Math.hypot(q.x - p.ref.x, q.y - p.ref.y) > 22) { emit('busted', q.x, q.y, 'جاي شافك! 👀 ارجع للبداية', p.slot); place(p, p.x, 1000); p.ref = { x: p.x, y: 1000 }; } } }
+      if (Math.hypot(q.x - p.ref.x, q.y - p.ref.y) > 22) { emit('busted', q.x, q.y, 'جاي شافك! 👀 ارجع من أول', p.slot); place(p, p.x, 1000); p.ref = { x: p.x, y: 1000 }; } } }
   const fin = s.players.find(p => p.y < 330);
   if (fin || s.tm <= 0) endRound(s.players.slice().sort((a, b) => a.y - b.y).map(p => p.slot));
 }
@@ -152,7 +152,7 @@ function stepSleep(dt) {
 function stepHungry(dt) {
   const s = S, j = s.jay, alive = s.players.filter(p => !p.out), el = s.rTime - s.tm;
   s.tunaT -= dt; if (s.tunaT <= 0 && s.tunas.filter(t => !t.thrown).length < 2) { s.tunaT = rnd(4, 7); const p = { x: rnd(60, W - 60), y: rnd(120, H - 80) }; s.tunas.push({ id: s.nid++, x: p.x, y: p.y, thrown: 0 }); }
-  for (const t of s.tunas.slice()) if (!t.thrown) for (const p of alive) if (!p.hold && dist(p, t) < 34) { p.hold = 1; p.fake = Math.random() < .3; s.tunas.splice(s.tunas.indexOf(t), 1); emit('tuna', p.x, p.y, 'لقطت تونة 🐟 اضغط «ارمِ»', p.slot); break; }
+  for (const t of s.tunas.slice()) if (!t.thrown) for (const p of alive) if (!p.hold && dist(p, t) < 34) { p.hold = 1; p.fake = Math.random() < .3; s.tunas.splice(s.tunas.indexOf(t), 1); emit('tuna', p.x, p.y, 'جبت تونة 🐟 لا قرّب جاي اضغط «ارمها»', p.slot); break; }
   j.angry = Math.max(0, j.angry - dt);
   if (j.st === 'eat') { j.t -= dt; const t = s.tunas.find(t => t.id === j.food); if (t && dist(j, t) > 8) { stepTo(j, t, 320 * dt); } else if (t) { if (j.t <= 0) { s.tunas.splice(s.tunas.indexOf(t), 1); j.st = 'chase'; j.tgtT = 0; } } else { j.st = 'chase'; } }
   else if (j.st === 'rest') { j.t -= dt; if (j.t <= 0) { j.st = 'chase'; j.tgtT = 0; } }
@@ -160,7 +160,7 @@ function stepHungry(dt) {
     j.tgtT -= dt; let tg = s.players[j.tgt]; if (!tg || tg.out || j.tgtT <= 0) { if (!j.angry || !tg || tg.out) { tg = alive.slice().sort((a, b) => dist(a, j) - dist(b, j))[0]; j.tgt = tg ? tg.slot : -1; } j.tgtT = 2.5; }
     tg = s.players[j.tgt]; if (tg && !tg.out) {
       const v = (135 + el * 2.3 + (j.angry > 0 ? 55 : 0) + (el > 60 ? 80 : 0)) * dt; stepTo(j, tg, v);
-      if (dist(j, tg) < 38) { tg.out = 1; tg.hold = 0; s.outOrder.push(tg.slot); emit('caught', tg.x, tg.y, 'جاي مسك ' + tg.name + '! 😵', tg.slot); j.st = 'rest'; j.t = 1.1; }
+      if (dist(j, tg) < 38) { tg.out = 1; tg.hold = 0; s.outOrder.push(tg.slot); emit('caught', tg.x, tg.y, 'جاي صاد ' + tg.name + '! 😵', tg.slot); j.st = 'rest'; j.t = 1.1; }
     }
   }
   const left = s.players.filter(p => !p.out).length;
@@ -169,8 +169,8 @@ function stepHungry(dt) {
 function stepTo(o, t, v) { const dx = t.x - o.x, dy = t.y - o.y, m = Math.hypot(dx, dy) || 1; const k = Math.min(1, v / m); o.x += dx * k; o.y += dy * k; if (Math.abs(dx) > 2) o.f = dx > 0 ? 1 : -1; }
 function throwTuna(p) {
   p.hold = 0; const j = S.jay;
-  if (p.fake) { j.st = 'chase'; j.tgt = p.slot; j.tgtT = 4; j.angry = 3.5; emit('fake', p.x, p.y, 'التونة فاضية! 😾 جاي معصّب عليك', p.slot); }
-  else { const t = { id: S.nid++, x: clamp(p.x - p.f * 70, 30, W - 30), y: p.y + 10, thrown: 1 }; S.tunas.push(t); j.st = 'eat'; j.food = t.id; j.t = 2.6; emit('throw', t.x, t.y, 'جاي التهى بالتونة 😋', p.slot); }
+  if (p.fake) { j.st = 'chase'; j.tgt = p.slot; j.tgtT = 4; j.angry = 3.5; emit('fake', p.x, p.y, 'التونة طلعت فاضية! 😾 جاي زعلان ويبيك أنت', p.slot); }
+  else { const t = { id: S.nid++, x: clamp(p.x - p.f * 70, 30, W - 30), y: p.y + 10, thrown: 1 }; S.tunas.push(t); j.st = 'eat'; j.food = t.id; j.t = 2.6; emit('throw', t.x, t.y, 'جاي انشغل بالتونة 😋', p.slot); }
 }
 // ── جولة «جمّع القطيع» ──
 function aById(id) { return S.animals.find(a => a.id === id); }
@@ -192,15 +192,15 @@ function stepHerd(dt) {
   const s = S, j = s.jay; stepAnimals(dt);
   for (const p of s.players) {
     if (p.stun > 0) continue;
-    for (const a of s.animals) if (a.own === -1 && a.wT <= 0 && p.trail.length < CAP && dist(p, a) < (a.k === 'c' ? 42 : 34)) { a.own = p.slot; p.trail.push(a.id); emit('pick', a.x, a.y, a.k === 'c' ? '+جمل' : '+خروف', p.slot); }
+    for (const a of s.animals) if (a.own === -1 && a.wT <= 0 && p.trail.length < CAP && dist(p, a) < (a.k === 'c' ? 42 : 34)) { a.own = p.slot; p.trail.push(a.id); emit('pick', a.x, a.y, a.k === 'c' ? '+بعير' : '+خروف', p.slot); }
     if (p.trail.length && inPen(p, p.slot)) { let got = 0; for (const id of p.trail) { const a = aById(id); if (a) { s.animals.splice(s.animals.indexOf(a), 1); got += a.k === 'c' ? 3 : 1; } } p.trail = []; p.sc += got; emit('bank', p.x, p.y, '+' + got, p.slot); }
   }
   if (s.animals.filter(a => a.own === -1).length < 12 && Math.random() < dt * 2) spawnAnimal(Math.random() < .18 ? 'c' : 's');
   j.t -= dt;
   if (j.st === 'flop') { if (j.t <= 0) { j.st = 'walk'; j.t = 2; } }
   else { const tg = s.players.filter(p => p.trail.length >= 2 && p.stun <= 0).sort((a, b) => b.trail.length - a.trail.length)[0];
-    if (tg) { if (j.tgt !== tg.slot) emit('target', tg.x, tg.y, '😼 جاي جايك! دخّل قطيعك بسرعة', tg.slot); j.tgt = tg.slot; j.st = 'chase'; stepTo(j, tg, (150 + (s.rTime - s.tm) * 1.2) * dt);
-      if (dist(j, tg) < 40) { for (const id of tg.trail) { const a = aById(id); if (a) { const an = rnd(0, 6.28); a.own = -1; a.wT = .7; a.vx = Math.cos(an) * 170; a.vy = Math.sin(an) * 170; } } tg.trail = []; tg.stun = 1.1; j.st = 'flop'; j.t = 2.2; j.tgt = -1; emit('scatter', tg.x, tg.y, 'جاي طيّر قطيعك! 😼', tg.slot); } }
+    if (tg) { if (j.tgt !== tg.slot) emit('target', tg.x, tg.y, '😼 جاي جايك! دخّل قطيعك الزريبة بسرعة', tg.slot); j.tgt = tg.slot; j.st = 'chase'; stepTo(j, tg, (150 + (s.rTime - s.tm) * 1.2) * dt);
+      if (dist(j, tg) < 40) { for (const id of tg.trail) { const a = aById(id); if (a) { const an = rnd(0, 6.28); a.own = -1; a.wT = .7; a.vx = Math.cos(an) * 170; a.vy = Math.sin(an) * 170; } } tg.trail = []; tg.stun = 1.1; j.st = 'flop'; j.t = 2.2; j.tgt = -1; emit('scatter', tg.x, tg.y, 'جاي فرّق قطيعك! 😼', tg.slot); } }
     else { j.tgt = -1; j.st = 'walk'; if (dist(j, { x: j.tx, y: j.ty }) < 10) { const p = freeSpot(); j.tx = p.x; j.ty = p.y; } stepTo(j, { x: j.tx, y: j.ty }, 45 * dt); } }
   if (s.tm <= 0) endRound(shuffle(s.players.slice()).sort((a, b) => b.sc - a.sc).map(p => p.slot));
 }
@@ -289,13 +289,13 @@ function onEvent(e) {
     case 'count': SND.tick(); bigText(txt); break;
     case 'go': SND.go(); bigText('يلا!'); break;
     case 'stir': SND.stir(); break;
-    case 'awake': SND.awake(); flash('#d93a2f'); bigText('👀 لا تتحرك!'); break;
+    case 'awake': SND.awake(); flash('#d93a2f'); bigText('وقّف! 👀'); break;
     case 'fake': pop('#ffe14d', true); if (mine) { SND.bad(); toast(txt, 'bad'); } break;
     case 'sleep': pop('#fff'); break;
     case 'busted': pop('#ff8a7a', true); if (mine) { SND.bad(); toast(txt, 'bad'); flash('#d93a2f'); } break;
     case 'tuna': if (mine) { SND.pick(); toast(txt, 'good'); } break;
     case 'throw': pop('#ffe14d', true); if (mine) SND.throw(); break;
-    case 'caught': pop('#ff8a7a', true); SND.caught(); if (mine) { toast('جاي مسكك! 😵 تفرّج على الباقين', 'bad'); flash('#d93a2f'); } else toast(txt, 'info'); break;
+    case 'caught': pop('#ff8a7a', true); SND.caught(); if (mine) { toast('جاي صادك! 😵 اقعد تفرّج على الباقين', 'bad'); flash('#d93a2f'); } else toast(txt, 'info'); break;
     case 'pick': if (mine) { pop('#fff'); SND.pick(); } break;
     case 'bank': pop('#ffe14d', true); if (mine) SND.bank(); break;
     case 'target': if (mine) { SND.stir(); toast(txt, 'bad'); } break;
@@ -398,17 +398,17 @@ function hud() {
   const rule = V.ph === 'play' || V.ph === 'intro' ? ROUNDS[V.rd].ic + ' ' + ROUNDS[V.rd].n : ''; if ($('#rule').textContent !== rule) $('#rule').textContent = rule;
   if (IN.id !== null && !IN.hid) { IN.hid = 1; $('#hint').style.display = 'none'; }
   const me = V.players[ME.slot], b = $('#act');
-  const lbl = V.rd === 'sleep' ? 'امشِ<br>بهدوء' : V.rd === 'hungry' && me && me.hold ? 'ارمِ<br>🐟' : 'اندفاع<br>💨'; if (b.dataset.l !== lbl) { b.dataset.l = lbl; b.innerHTML = lbl; }
+  const lbl = V.rd === 'sleep' ? 'بشويش' : V.rd === 'hungry' && me && me.hold ? 'ارمها<br>🐟' : 'اركض<br>💨'; if (b.dataset.l !== lbl) { b.dataset.l = lbl; b.innerHTML = lbl; }
   b.style.display = V.rd === 'sleep' ? 'none' : ''; b.classList.toggle('cd', (!(me && me.hold && V.rd === 'hungry') && !!me && me.dashCd > 0)); b.classList.toggle('tuna', !!(me && me.hold && V.rd === 'hungry'));
   const k = V.ph + '|' + V.rd + '|' + V.wn + '|' + V.pk + '|' + V.op.join() + '|' + V.ch; if (k === uiKey) return; uiKey = k;
   document.querySelectorAll('.ov').forEach(o => o.classList.remove('show', 'fade'));
   if (V.ph === 'intro') { const R = ROUNDS[V.rd], c = $('#intro'); c.querySelector('.ic').textContent = R.ic; c.querySelector('.mt').textContent = R.n; c.querySelector('.md').textContent = R.d;
     c.querySelector('.rn').textContent = 'الجولة ' + (V.sp.reduce((a, b) => a + b, 0) + 1); c.classList.add('show'); setTimeout(() => { if (V && V.ph === 'intro') c.classList.add('fade'); }, 3400); }
-  if (V.ph === 'result') { const w = V.players[V.wn], c = $('#result'); c.querySelector('.mt').textContent = w.slot === ME.slot ? 'أخذت الختم! 🏅' : w.name + ' أخذ الختم 🏅';
+  if (V.ph === 'result') { const w = V.players[V.wn], c = $('#result'); c.querySelector('.mt').textContent = w.slot === ME.slot ? 'خذيت الختم! 🏅' : w.name + ' خذ الختم 🏅';
     c.querySelector('.rows').innerHTML = V.rk.map((s, i) => { const p = V.players[s]; return `<div class="rk" style="--c:${COL[s]}"><i>${i + 1}</i><span>${esc(p.name)}</span><b>${'🏅'.repeat(V.sp[s]) || '—'}</b></div>`; }).join('');
     c.classList.add('show'); }
   if (V.ph === 'pick') { const c = $('#pick'), p = V.players[V.pk], mine = V.pk === ME.slot;
-    c.querySelector('.mt').textContent = mine ? 'جيت آخر… اختر الجولة الجاية!' : p.name + ' جاء آخر… ويختار الجولة الجاية';
+    c.querySelector('.mt').textContent = mine ? 'جيت الأخير… اختار الجولة الجاية!' : p.name + ' جا الأخير… وهو اللي بيختار الجولة الجاية';
     c.querySelector('.opts').innerHTML = V.op.map(o => `<button class="opt" data-o="${o}" ${mine ? '' : 'disabled'}><i>${ROUNDS[o].ic}</i>${ROUNDS[o].n}</button>`).join('');
     c.querySelectorAll('.opt').forEach(b => b.onclick = () => { if (S) choose(b.dataset.o); else NET.emit('pick', { s: ME.slot, c: b.dataset.o }); c.querySelectorAll('.opt').forEach(x => x.disabled = true); b.classList.add('sel'); });
     c.classList.add('show'); }
@@ -416,7 +416,7 @@ function hud() {
 }
 function showCrown() {
   const w = V.players[V.ch], c = $('#crown');
-  c.querySelector('.mt').textContent = w.slot === ME.slot ? 'أنت شيخ المزرعة! 👑' : w.name + ' شيخ المزرعة 👑';
+  c.querySelector('.mt').textContent = w.slot === ME.slot ? 'كفو! أنت شيخ المزرعة 👑' : w.name + ' صار شيخ المزرعة 👑';
   c.querySelector('.who').innerHTML = `<img src="${SPR.IMG[(w.ch === 'h' ? 'herder' : 'farmer') + w.slot].src}"><img class="jj" src="${SPR.IMG.jayFlop.src}">`;
   c.querySelector('.rows').innerHTML = V.players.slice().sort((a, b) => V.sp[b.slot] - V.sp[a.slot]).map(p => `<div class="rk" style="--c:${COL[p.slot]}"><span>${esc(p.name)}</span><b>${'🏅'.repeat(V.sp[p.slot]) || '—'}</b></div>`).join('');
   $('#again').style.display = S ? '' : 'none'; $('#waitHost').style.display = S ? 'none' : ''; c.classList.add('show'); confetti();
@@ -431,7 +431,7 @@ function loop(now) {
   if (S) { stepSim(dt); const d = snap(); applySnap(d, true); sendT -= dt; if (NET.r && sendT <= 0) { sendT = .12; NET.emit('st', d); } }
   else if (V) { stepClient(dt); sendT -= dt; const me = V.players[ME.slot];
     if (me && sendT <= 0) { sendT = .1; NET.emit('in', { s: ME.slot, x: me.x | 0, y: me.y | 0, f: me.f, mv: me.mv > .1 ? 1 : 0, d: me.dashT > 0 ? 1 : 0, a: actCount, tp: me.tp }); }
-    if (performance.now() - V.lastSnap > 7000 && !V.lost) { V.lost = true; toast('انقطع الاتصال بصاحب الغرفة…', 'bad'); setTimeout(() => { if (V && V.lost) { MODE = 'menu'; netClose(); showScreen('menu'); } }, 4000); } }
+    if (performance.now() - V.lastSnap > 7000 && !V.lost) { V.lost = true; toast('النت فصل عن صاحب الغرفة…', 'bad'); setTimeout(() => { if (V && V.lost) { MODE = 'menu'; netClose(); showScreen('menu'); } }, 4000); } }
   render(); hud();
 }
 
@@ -452,12 +452,12 @@ function localRoom() { return { join(name) { const bc = new BroadcastChannel(nam
 const LOCAL = /[?&]local=1/.test(location.search);
 function myProfile() { return { u: NET.uid, nm: (($('#name').value || '').trim() || 'لاعب').slice(0, 12), ch: PROF.ch }; }
 function openRoom(host, code) {
-  const api = LOCAL ? localRoom() : fbRoom(); if (!api) { toast('ما قدرت أتصل بخادم اللعب. تأكد من الإنترنت.', 'bad'); return; }
+  const api = LOCAL ? localRoom() : fbRoom(); if (!api) { toast('ما قدرت أتصل بالسيرفر، شيّك على النت.', 'bad'); return; }
   netClose(); NET.host = host; NET.code = code; NET.r = api.join('farm-' + code, host); NET.list = host ? [myProfile()] : []; NET.seen = {};
   NET.r.on('hi', d => { if (!NET.host || d.u === NET.uid) return; NET.seen[d.u] = performance.now();
     let e = NET.list.find(x => x.u === d.u); if (!e) { if (NET.list.length >= 4 || MODE === 'play') { NET.emit('full', { to: d.u }); return; } NET.list.push(e = { u: d.u }); } e.nm = String(d.nm || '').slice(0, 12); e.ch = d.ch; drawLobby(); });
   NET.r.on('lobby', d => { if (NET.host || d.u === NET.uid) return; NET.list = d.list; drawLobby(); });
-  NET.r.on('full', d => { if (d.to === NET.uid && !NET.list.some(x => x.u === NET.uid)) lobbyMsg('الغرفة مليانة أو اللعب بدأ', 'bad'); });
+  NET.r.on('full', d => { if (d.to === NET.uid && !NET.list.some(x => x.u === NET.uid)) lobbyMsg('الغرفة فل أو اللعب بدا', 'bad'); });
   NET.r.on('start', d => { if (NET.host || d.u === NET.uid) return; const me = d.list.findIndex(x => x.u === NET.uid); if (me < 0) return; startClient(d.list, me); });
   NET.r.on('st', d => { if (NET.host || d.u === NET.uid || MODE !== 'play' || !V) return; applySnap(d, false); });
   NET.r.on('in', d => { if (!NET.host || !S) return; const p = S.players[d.s]; if (!p || p.u !== d.u) return;
@@ -465,7 +465,7 @@ function openRoom(host, code) {
     if (d.d && p.dashT <= 0) p.dashT = .2; if (d.a > p.act) { p.act = d.a; if (S.rd === 'hungry' && p.hold && S.ph === 'play') throwTuna(p); } });
   NET.r.on('pick', d => { if (NET.host && S && S.pick === d.s && S.players[d.s].u === d.u) choose(d.c); });
   NET.r.on('bye', d => { if (d.u === NET.uid) return; if (NET.host) { const i = NET.list.findIndex(x => x.u === d.u); if (i >= 0 && MODE !== 'play') { NET.list.splice(i, 1); drawLobby(); } }
-    else if (NET.list[0] && NET.list[0].u === d.u) { toast('صاحب الغرفة طلع', 'bad'); if (MODE !== 'play') { netClose(); showScreen('menu'); } } });
+    else if (NET.list[0] && NET.list[0].u === d.u) { toast('صاحب الغرفة طلع منها', 'bad'); if (MODE !== 'play') { netClose(); showScreen('menu'); } } });
   clearInterval(NET.iv); NET.iv = setInterval(() => { if (MODE === 'play') return;
     if (NET.host) { const now = performance.now(); NET.list = NET.list.filter(x => x.u === NET.uid || x.bot || now - (NET.seen[x.u] || now) < 6000); NET.emit('lobby', { list: NET.list }); drawLobby(); }
     else NET.emit('hi', myProfile()); }, 1000);
@@ -476,12 +476,12 @@ function netClose() { if (NET.r) { NET.emit('bye', {}); try { NET.r.leave(); } c
 function lobbyMsg(t, c) { const el = $('#lobbyMsg'); el.textContent = t; el.className = 'msg ' + (c || ''); }
 function drawLobby() {
   const L = NET.list; let h = '';
-  for (let i = 0; i < 4; i++) { const p = L[i]; h += p ? `<div class="pl" style="--c:${COL[i]}"><img src="${SPR.IMG[(p.ch === 'h' ? 'herder' : 'farmer') + i].src}"><span>${esc(p.nm)}${p.u === NET.uid ? ' (أنت)' : ''}${i === 0 ? ' 👑' : ''}</span>${p.bot ? '<em>كمبيوتر</em>' : ''}${NET.host && p.bot ? `<button class="x" data-i="${i}">✕</button>` : ''}</div>` : `<div class="pl empty"><span>بانتظار لاعب…</span></div>`; }
+  for (let i = 0; i < 4; i++) { const p = L[i]; h += p ? `<div class="pl" style="--c:${COL[i]}"><img src="${SPR.IMG[(p.ch === 'h' ? 'herder' : 'farmer') + i].src}"><span>${esc(p.nm)}${p.u === NET.uid ? ' (أنت)' : ''}${i === 0 ? ' 👑' : ''}</span>${p.bot ? '<em>كمبيوتر</em>' : ''}${NET.host && p.bot ? `<button class="x" data-i="${i}">✕</button>` : ''}</div>` : `<div class="pl empty"><span>ننتظر لاعب…</span></div>`; }
   $('#plist').innerHTML = h; document.querySelectorAll('#plist .x').forEach(b => b.onclick = () => { NET.list.splice(+b.dataset.i, 1); drawLobby(); });
   $('#hostCtl').style.display = NET.host ? '' : 'none'; $('#guestWait').style.display = NET.host ? 'none' : '';
-  $('#startBtn').disabled = L.length < 2; $('#addBot').disabled = L.length >= 4; if (!NET.host) lobbyMsg(L.length ? '' : 'جاري الدخول للغرفة…');
+  $('#startBtn').disabled = L.length < 2; $('#addBot').disabled = L.length >= 4; if (!NET.host) lobbyMsg(L.length ? '' : 'لحظة، قاعد أدخّلك الغرفة…');
 }
-let botN = 0; const BOTNAMES = ['أبو جمل', 'راعي الغنم', 'أم ركبة', 'الفلاح الفصيح', 'شيخ الحلال', 'أبو تونة'];
+let botN = 0; const BOTNAMES = ['أبو بعير', 'راعي الغنم', 'أم سعيد', 'أبو فهد', 'شيخ الحلال', 'أبو تونة'];
 function botEntry(i) { botN++; return { u: 'bot' + botN, nm: BOTNAMES[botN % BOTNAMES.length], ch: (botN + i) % 2 ? 'f' : 'h', bot: 1 }; }
 
 // ───────────── البدء ─────────────
@@ -504,12 +504,12 @@ function initUI() {
   $('#addBot').onclick = () => { if (NET.list.length < 4) { NET.list.push(botEntry(NET.list.length)); drawLobby(); } };
   $('#startBtn').onclick = () => { au(); if (NET.list.length < 2) return; const go = () => startHost(NET.list.slice()); NET.r ? NET.r.clear().then(go, go) : go(); };
   $('#leave').onclick = () => { netClose(); showScreen('menu'); };
-  $('#share').onclick = () => { const url = location.origin + location.pathname + '?r=' + NET.code + (LOCAL ? '&local=1' : ''), txt = 'تعال نلعب «مزرعة الشيوخ» 🐑😼 مين بيصير شيخ المزرعة؟ رمز الغرفة: ' + NET.code;
-    if (navigator.share) navigator.share({ title: 'مزرعة الشيوخ', text: txt, url }).catch(() => {}); else { navigator.clipboard && navigator.clipboard.writeText(txt + '\n' + url); lobbyMsg('نسخت الدعوة، أرسلها لهم', 'good'); } };
+  $('#share').onclick = () => { const url = location.origin + location.pathname + '?r=' + NET.code + (LOCAL ? '&local=1' : ''), txt = 'تعال العب معنا «مزرعة الشيوخ» 🐑😼 خلنا نشوف مين بيصير شيخ المزرعة! رمز الغرفة: ' + NET.code;
+    if (navigator.share) navigator.share({ title: 'مزرعة الشيوخ', text: txt, url }).catch(() => {}); else { navigator.clipboard && navigator.clipboard.writeText(txt + '\n' + url); lobbyMsg('نسخت الدعوة، أرسلها لربعك', 'good'); } };
   $('#again').onclick = () => { if (!S) return; const list = NET.list.filter(x => x.bot || x.u === NET.uid || S.players.some(p => p.u === x.u && !p.bot)); if (list.length < 2) { MODE = 'menu'; showScreen(NET.r ? 'lobby' : 'menu'); return; } const go = () => startHost(list); NET.r ? NET.r.clear().then(go, go) : go(); };
   $('#toMenu').onclick = () => { MODE = 'menu'; S = null; V = null; document.querySelectorAll('.ov').forEach(o => o.classList.remove('show')); if (NET.r && NET.host) { showScreen('lobby'); drawLobby(); } else { netClose(); showScreen('menu'); } };
   $('#snd').onclick = () => { AU.on = !AU.on; localStorage.setItem('farm-snd', AU.on ? '1' : '0'); $('#snd').textContent = AU.on ? '🔊' : '🔇'; }; $('#snd').textContent = AU.on ? '🔊' : '🔇';
-  let arm = 0; $('#quit').onclick = () => { if (Date.now() - arm > 2500) { arm = Date.now(); toast('اضغط مرة ثانية للخروج', 'info'); return; } MODE = 'menu'; S = null; V = null; document.querySelectorAll('.ov').forEach(o => o.classList.remove('show')); netClose(); showScreen('menu'); };
+  let arm = 0; $('#quit').onclick = () => { if (Date.now() - arm > 2500) { arm = Date.now(); toast('اضغط مرة ثانية عشان تطلع', 'info'); return; } MODE = 'menu'; S = null; V = null; document.querySelectorAll('.ov').forEach(o => o.classList.remove('show')); netClose(); showScreen('menu'); };
   const m = location.search.match(/[?&]r=(\d{4})/); if (m) $('#joinCode').value = m[1];
 }
 addEventListener('beforeunload', () => netClose());

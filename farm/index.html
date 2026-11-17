@@ -117,7 +117,7 @@ input:focus{border-color:#e4574b} input.err{border-color:#d93a2f;animation:sh .3
       <button class="chp" data-c="f"><img id="chF" alt="">فلاح</button>
       <button class="chp" data-c="h"><img id="chH" alt="">راعي إبل</button>
     </div>
-    <button class="btn" id="create">افتح غرفة وادعُ ربعك</button>
+    <button class="btn" id="create">سوّ غرفة وعزّم ربعك</button>
     <div class="row"><input id="joinCode" inputmode="numeric" maxlength="4" placeholder="رمز الغرفة" style="flex:1.3"><button class="btn b" id="join" style="flex:1;margin:0">ادخل</button></div>
     <div class="or">أو</div>
     <div class="lbl" style="margin:0">العب ضد الكمبيوتر</div>
@@ -126,11 +126,11 @@ input:focus{border-color:#e4574b} input.err{border-color:#d93a2f;animation:sh .3
   </div>
   <div class="card how">
     <h3>كيف تفوز؟</h3>
-    <p>المباراة جولات قصيرة. <b>الفائز بكل جولة ياخذ ختم 🏅 من إدارة البيت</b>، وأول واحد يجمع <b>٣ أختام</b> يصير <b>شيخ المزرعة</b> 👑. واللي يجي آخر يختار الجولة الجاية.</p>
-    <p>تتحرك بسحب إصبعك في أي مكان، وفيه زر واحد بس.</p>
-    <div class="rnd"><i>😴</i><div><b>لا تصحّون جاي</b><span>امشِ للبيت وجاي نايم. فتح عيونه؟ وقّف… وإلا ترجع للبداية</span></div></div>
-    <div class="rnd"><i>🐟</i><div><b>جاي جوعان</b><span>اهرب من جاي، وارمِ له تونة يلتهي فيها. آخر واحد يبقى يفوز</span></div></div>
-    <div class="rnd"><i>🐑</i><div><b>جمّع القطيع</b><span>جمّع خرفان لحظيرتك، وجاي يطارد صاحب أكبر قطيع</span></div></div>
+    <p>المباراة جولات قصيرة. <b>اللي يفوز بالجولة ياخذ ختم 🏅 من إدارة البيت</b>، وأول واحد يجمع <b>٣ أختام</b> يصير <b>شيخ المزرعة</b> 👑. واللي يجي الأخير هو اللي يختار الجولة الجاية.</p>
+    <p>تمشي بسحب إصبعك على الشاشة، وفيه زر واحد بس.</p>
+    <div class="rnd"><i>😴</i><div><b>لا تصحّون جاي</b><span>امشِ لين البيت وجاي نايم. فتح عيونه؟ وقّف مكانك… وإلا ترجع من أول</span></div></div>
+    <div class="rnd"><i>🐟</i><div><b>جاي جوعان</b><span>اشرد من جاي، وارمِ له تونة ينشغل فيها. آخر واحد يبقى هو الفايز</span></div></div>
+    <div class="rnd"><i>🐑</i><div><b>جمّع القطيع</b><span>لمّ الخرفان لزريبتك، وجاي يلاحق اللي معه أكبر قطيع</span></div></div>
   </div>
 </section>
 
@@ -146,10 +146,10 @@ input:focus{border-color:#e4574b} input.err{border-color:#d93a2f;animation:sh .3
     <div id="plist"></div>
     <div id="lobbyMsg" class="msg"></div>
     <div id="hostCtl">
-      <button class="btn k" id="addBot">+ أضف لاعب كمبيوتر</button>
-      <button class="btn g" id="startBtn">ابدأ المباراة</button>
+      <button class="btn k" id="addBot">+ ضيف لاعب كمبيوتر</button>
+      <button class="btn g" id="startBtn">يلا نبدأ</button>
     </div>
-    <div id="guestWait" class="msg">بانتظار صاحب الغرفة يبدأ…</div>
+    <div id="guestWait" class="msg">ننتظر صاحب الغرفة يبدأ…</div>
     <button class="btn" id="leave" style="background:#a08870;box-shadow:0 6px 0 #6b5a48">رجوع</button>
   </div>
 </section>
@@ -157,15 +157,15 @@ input:focus{border-color:#e4574b} input.err{border-color:#d93a2f;animation:sh .3
 <section class="scr" id="game">
   <div id="top"><button class="ib" id="quit">✕</button><div id="chips"></div><div id="timer">—</div><button class="ib" id="snd">🔊</button></div>
   <div id="rule"></div>
-  <button id="act">اندفاع<br>💨</button>
+  <button id="act">اركض<br>💨</button>
   <div id="hint">اسحب بإصبعك<br>في أي مكان</div>
   <div id="flash"></div>
   <div id="big"></div>
   <div class="ov" id="intro"><div class="st">إدارة<br>البيت</div><div class="mh">تعميم إداري</div><div class="rn"></div><div class="ic"></div><div class="mt"></div><div class="md"></div></div>
   <div class="ov" id="result"><div class="mt"></div><div class="rows"></div><div class="need">أول واحد يجمع ٣ أختام يصير شيخ المزرعة 👑</div></div>
-  <div class="ov" id="pick"><div class="mh">جولة جاية</div><div class="mt" style="font-size:26px"></div><div class="opts"></div></div>
+  <div class="ov" id="pick"><div class="mh">الجولة الجاية</div><div class="mt" style="font-size:26px"></div><div class="opts"></div></div>
   <div class="ov" id="crown"><div class="who"></div><div class="mt"></div><div class="rows"></div>
-    <button class="btn g" id="again">مباراة جديدة</button><div id="waitHost" class="msg">بانتظار صاحب الغرفة…</div><button class="btn k" id="toMenu">رجوع</button></div>
+    <button class="btn g" id="again">نعيدها؟ 🔁</button><div id="waitHost" class="msg">ننتظر صاحب الغرفة…</div><button class="btn k" id="toMenu">رجوع</button></div>
   <div id="confetti"></div>
   <div id="toast"></div>
 </section>
