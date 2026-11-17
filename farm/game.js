@@ -494,6 +494,13 @@ function loop(now) {
   render(); hud();
 }
 
+// لو صفحة المضيف صارت بالخلفية (المتصفح يوقف الرسم)، نكمّل المحاكاة ونرسل للاعبين عشان اللعب ما يتجمد عندهم
+setInterval(() => {
+  if (!document.hidden || MODE !== 'play' || !S) return;
+  const now = performance.now(); let dt = Math.min(2, (now - lastT) / 1000); lastT = now;
+  while (dt > 0) { const d = Math.min(.05, dt); stepSim(d); dt -= d; }
+  if (NET.r) NET.emit('st', snap());
+}, 120);
 // ───────────── الشبكة ─────────────
 const NET = { r: null, host: false, uid: Math.random().toString(36).slice(2, 10), code: '', list: [], seen: {}, iv: 0,
   emit(t, d) { if (this.r) try { this.r.emit(t, Object.assign({ u: this.uid }, d)); } catch (e) {} } };
