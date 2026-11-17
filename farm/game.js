@@ -496,8 +496,8 @@ function loop(now) {
 
 // لو صفحة المضيف صارت بالخلفية (المتصفح يوقف الرسم)، نكمّل المحاكاة ونرسل للاعبين عشان اللعب ما يتجمد عندهم
 setInterval(() => {
-  if (!document.hidden || MODE !== 'play' || !S) return;
-  const now = performance.now(); let dt = Math.min(2, (now - lastT) / 1000); lastT = now;
+  const now = performance.now(); if (MODE !== 'play' || !S || now - lastT < 250) return; // الرسم واقف (الصفحة مخفية أو مغطاة)
+  let dt = Math.min(2, (now - lastT) / 1000); lastT = now;
   while (dt > 0) { const d = Math.min(.05, dt); stepSim(d); dt -= d; }
   if (NET.r) NET.emit('st', snap());
 }, 120);
