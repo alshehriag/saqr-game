@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js?v=18';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=18';
-import { buildFX } from './fx.js?v=18';
+import { buildTextures } from './tex.js?v=19';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=19';
+import { buildFX } from './fx.js?v=19';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
@@ -11,9 +11,9 @@ const store = { get(k, d) { try { return localStorage.getItem('sd3_' + k) ?? d; 
 
 // ---------- الجودة
 const TIERS = {
-  low: { prMax: 1, shadows: false, bloom: false, blur: false, heat: false, flare: false, rate: 0.4, rocks: 76, shrubs: 22, landmarkBands: 6, sandAniso: 2 },
-  med: { prMax: 1.25, shadows: true, bloom: true, blur: false, heat: false, flare: true, rate: 0.65, rocks: 160, shrubs: 64, landmarkBands: 10, sandAniso: 4 },
-  high: { prMax: 2, shadows: true, bloom: true, blur: true, heat: true, flare: true, rate: 1, rocks: 260, shrubs: 120, landmarkBands: 16, sandAniso: 8 },
+  low: { prMax: 1, shadows: false, bloom: false, blur: false, heat: false, flare: false, rate: 0.4, rocks: 76, shrubs: 22, traffic: 14, avenuePalms: 28, landmarkBands: 6, sandAniso: 2 },
+  med: { prMax: 1.25, shadows: true, bloom: true, blur: false, heat: false, flare: true, rate: 0.65, rocks: 160, shrubs: 64, traffic: 26, avenuePalms: 48, landmarkBands: 10, sandAniso: 4 },
+  high: { prMax: 2, shadows: true, bloom: true, blur: true, heat: true, flare: true, rate: 1, rocks: 260, shrubs: 120, traffic: 42, avenuePalms: 72, landmarkBands: 16, sandAniso: 8 },
 };
 const Q = { post: true, shadowMap: 1024, palms: 18, msaa: 0, auto: true, tier: 'med', pr: 1, ...TIERS.med };
 let qPref = store.get('q', 'auto');
