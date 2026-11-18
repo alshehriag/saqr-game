@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js?v=20';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=20';
-import { buildFX } from './fx.js?v=20';
+import { buildTextures } from './tex.js?v=21';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=21';
+import { buildFX } from './fx.js?v=21';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
@@ -200,16 +200,52 @@ window.__game = G;
 // ---------- أصول القاعدة: كل منصة ورادار ومبنى يتضرر وحده
 const burnt = new THREE.MeshStandardMaterial({ color: 0x1c1916, roughness: 1, metalness: 0.1 });
 function asset(o, list = G.assets) { o.alive = true; o.objs = o.objs || [o.obj]; o.objs.forEach(ob => { ob.userData.t0 = { r: ob.rotation.clone(), s: ob.scale.clone(), p: ob.position.clone() }; }); list.push(o); return o; }
-function wreck(a) {
-  a.objs.forEach(o => { o.traverse(c => { if (c.isMesh && !c.isInstancedMesh && c.material !== W.mats.lamp) { if (!c.userData.m0) c.userData.m0 = c.material; c.material = burnt; } });
+// Deform and shade just the hit-facing part of the building, once per damage state.
+const damagePaint=new Map();
+function showSurfaceDamage(root,asset,hit,severe){
+  const hangar=root.userData.damageSurface===1, span=hangar?22:15;
+  let dx=(hit?.x??asset.x+1)-asset.x, dz=(hit?.z??asset.z+.5)-asset.z;
+  const len=Math.hypot(dx,dz);
+  if(len>.01){dx/=len;dz/=len;}else{dx=.8;dz=.6;}
+  const vertex=new V3(), inverse=new THREE.Matrix4();
+  root.updateWorldMatrix(true,true);
+  root.traverse(mesh=>{
+    if(!mesh.isMesh)return;
+    const data=mesh.userData;
+    if(!data.intactGeometry){
+      data.intactGeometry=mesh.geometry; data.intactMaterial=mesh.material;
+      mesh.geometry=mesh.geometry.clone();
+      let paint=damagePaint.get(mesh.material);
+      if(!paint){paint=mesh.material.clone(); paint.vertexColors=true; damagePaint.set(mesh.material,paint);}
+      mesh.material=paint;
+    }
+    const g=mesh.geometry, source=data.intactGeometry.attributes.position, pos=g.attributes.position;
+    const previous=g.attributes.color, color=new Float32Array(pos.count*3);
+    inverse.copy(mesh.matrixWorld).invert();
+    for(let i=0;i<pos.count;i++){
+      vertex.fromBufferAttribute(source,i).applyMatrix4(mesh.matrixWorld);
+      const side=((vertex.x-asset.x)*dx+(vertex.z-asset.z)*dz)/span;
+      const weight=M.smoothstep(side,-.18,.85), amount=weight*(severe?1:.54);
+      const shade=Math.min(1-amount*.88,previous?.getX(i)??1);
+      color.set([shade,shade*(1-.15*amount),shade*(1-.26*amount)],i*3);
+      if(hangar){const fold=amount*(.63+.16*Math.cos(vertex.z*.68+vertex.x*.35)); vertex.y*=1-fold;}
+      vertex.applyMatrix4(inverse); pos.setXYZ(i,vertex.x,hangar?Math.min(pos.getY(i),vertex.y):vertex.y,vertex.z);
+    }
+    pos.needsUpdate=true; g.setAttribute('color',new THREE.BufferAttribute(color,3));
+    if(hangar){g.computeVertexNormals();g.computeBoundingSphere();}
+  });
+}
+function wreck(a,hit) {
+  a.objs.forEach(o => { if(o.userData.damageSurface){showSurfaceDamage(o,a,hit,true);return;} o.traverse(c => { if (c.isMesh && !c.isInstancedMesh && c.material !== W.mats.lamp) { if (!c.userData.m0) c.userData.m0 = c.material; c.material = burnt; } });
     o.rotation.z += (Math.random() - 0.5) * 0.35; o.rotation.x += (Math.random() - 0.5) * 0.25; o.scale.y *= a.flat ? 0.35 : 0.5; o.position.y -= a.boss ? 4 : 0.5; });
   shadowOnce();
 }
 const SCM = new Map();
-function scorch(a) { if (a.dmg1) return; a.dmg1 = true;
-  (a.objs || []).forEach(o => o.traverse(c => { if (c.isMesh && !c.isInstancedMesh && c.material && !c.material.isMeshBasicMaterial && !c.userData.m0) { let s = SCM.get(c.material); if (!s) { s = c.material.clone(); s.color = c.material.color.clone().multiplyScalar(0.42); SCM.set(c.material, s); } c.userData.m0 = c.material; c.material = s; } }));
+function scorch(a,hit) { if (a.dmg1) return; a.dmg1 = true; if(a.flat)shadowOnce();
+  (a.objs || []).forEach(o => { if(o.userData.damageSurface){showSurfaceDamage(o,a,hit,false);return;} o.traverse(c => { if (c.isMesh && !c.isInstancedMesh && c.material && !c.material.isMeshBasicMaterial && !c.userData.m0) { let s = SCM.get(c.material); if (!s) { s = c.material.clone(); s.color = c.material.color.clone().multiplyScalar(0.42); SCM.set(c.material, s); } c.userData.m0 = c.material; c.material = s; } }); });
   F.explode(tC.set(a.x + (Math.random() - 0.5) * a.r, 0, a.z + (Math.random() - 0.5) * a.r), 0.45, { ground: true, debris: 10 }); }
-function restoreAll(list = G.assets) { list.forEach(a => a.dmg1 = false); list.forEach(a => { a.alive = true; if (a.hp0) a.hp = a.hp0; if (a.ammo0 !== undefined) { a.ammo = a.ammo0; a.reloads = 2; a.rt = 0; } a.cd = 0; a.objs.forEach(o => { const t = o.userData.t0; o.rotation.copy(t.r); o.scale.copy(t.s); o.position.copy(t.p); o.traverse(c => { if (c.userData.m0) { c.material = c.userData.m0; delete c.userData.m0; } }); }); }); shadowOnce(); }
+function restoreAll(list = G.assets) { list.forEach(a => a.dmg1 = false); list.forEach(a => { a.alive = true; if (a.hp0) a.hp = a.hp0; if (a.ammo0 !== undefined) { a.ammo = a.ammo0; a.reloads = 2; a.rt = 0; } a.cd = 0; a.objs.forEach(o => { const t = o.userData.t0; o.rotation.copy(t.r); o.scale.copy(t.s); o.position.copy(t.p); o.traverse(c => { if(c.userData.intactGeometry){c.geometry.dispose();c.geometry=c.userData.intactGeometry;c.material=c.userData.intactMaterial;delete c.userData.intactGeometry;delete c.userData.intactMaterial;}
+      if (c.userData.m0) { c.material = c.userData.m0; delete c.userData.m0; } }); }); }); shadowOnce(); }
 function buildInfra() {
   const kids = W.home.group.children.filter(c => !(c.geometry && c.geometry.type === 'PlaneGeometry') && !c.isInstancedMesh && c.visible);
   const near = (x, z, r) => kids.filter(c => Math.hypot(c.position.x - x, c.position.z - z) < r * 1.2);
@@ -446,7 +482,7 @@ function impact(t) { // ضرر موضعي حول نقطة السقوط فقط
   const ip = t.pos.clone(); ip.y = Math.max(0, heightAt(ip.x, ip.z)); const K = t.K;
   F.explode(ip, K.drone ? 0.6 : (t.k === 'b' ? 1.6 : 1.1), { ground: true, vel: t.vel, debris: 40 }); boom(1.2);
   const hit = G.assets.filter(a => a.alive && Math.hypot(a.x - ip.x, a.z - ip.z) < K.dmgR + a.r);
-  hit.forEach(a => { if (G.pvp && (a.hp ?? 1) > 1) { a.hp--; scorch(a); log(`إصابة: ${a.name}`, 'bad'); return; } a.alive = false; wreck(a); log(`دُمّر: ${a.name}`, 'bad'); if (a.kind === 'ew') { G.rCap = 10000; banner('دُمّر رادار الإنذار المبكر', 'مدى الكشف صار 10 كم', 'warn', 3); } });
+  hit.forEach(a => { if (G.pvp && (a.hp ?? 1) > 1) { a.hp--; scorch(a,ip); log(`إصابة: ${a.name}`, 'bad'); return; } a.alive = false; wreck(a,ip); log(`دُمّر: ${a.name}`, 'bad'); if (a.kind === 'ew') { G.rCap = 10000; banner('دُمّر رادار الإنذار المبكر', 'مدى الكشف صار 10 كم', 'warn', 3); } });
   G.leaks++; killTrack(t, false);
   if (hit.length) { const rad = hit.find(a => a.kind === 'radar'); banner(rad ? 'دُمّر ' + rad.name : 'إصابة في القاعدة', hit.map(a => a.name).join('، '), 'warn', 2.8); }
   else banner('سقط داخل القاعدة', 'بلا ضرر على المنظومات', 'warn', 2);
@@ -874,8 +910,8 @@ function munImpact(m) {
   if (G.pvp) { const ip = m.pos.clone(); ip.y = 0; F.explode(ip, (m.K.drone ? 0.6 : (m.k === 'b' ? 1.6 : 1.1)) * 1.3, { ground: true, vel: m.vel, debris: 40 }); boomFar(m.k === 'b' ? 1.1 : 0.8, 0.8); G.camShake = Math.max(G.camShake || 0, 0.3); G.ws.hit++; endShot(m); return; }
   const ip = m.pos.clone(); ip.y = 0; F.explode(ip, (m.K.drone ? 0.6 : (m.k === 'b' ? 1.6 : 1.1)) * (G.mode === 'bat' ? 1.3 : 1), { ground: true, vel: m.vel, debris: 40 }); if (G.mode === 'bat') { boomFar(m.k === 'b' ? 1.1 : 0.8, 0.8); G.camShake = Math.max(G.camShake || 0, 0.3); } else boom(1.1, Math.min(1.2, camera.position.distanceTo(ip) / 3000)); G.ws.hit++; let anyHit = false, anyDead = false;
   G.eA.filter(a => a.alive && Math.hypot(a.x - ip.x, a.z - ip.z) < m.K.dmgR + a.r).forEach(a => {
-    const pw = POW[m.k] * (G.mode === 'bat' ? G.up.pow : 1); a.hp = Math.round(((a.hp ?? 1) - pw) * 10) / 10; anyHit = true; if (a.boss && a.hp > 0) G.revenge = Math.min(2, (G.revenge || 0) + 1); if (G.mode === 'bat' && a.hp > 0) scorch(a); if (a.hp <= 0) anyDead = true; if (G.mode === 'bat') G.pops.push({ x: a.x, z: a.z, t: 0, s: a.hp <= 0 ? 'دُمّر' : '−' + pw, c: a.hp <= 0 ? '#ffd166' : '#ff5b45' });
-    if (a.hp <= 0) { a.alive = false; wreck(a); if (G.mode === 'bat') { if (a.kind === 'eoff') banner('دمّرت ' + a.name, 'قلّ إطلاق الخصم عليك', 'ok', 2.2); else if (a.supply) banner('ضربت إمداداته', 'إطلاقه وتلقيم دفاعه صار أبطأ', 'ok', 2.4); else if (a.kind === 'radar') banner('عمّيت ' + a.name, 'منظومته الدفاعية تعطّلت', 'ok', 2.2); } G.score += a.val * 10; log(`دُمّر: ${a.name}`, 'ok'); if (a.mk) a.mk.style.display = 'none'; if (G.AL.goals.includes(a.name)) banner('دُمّر الهدف', a.name, 'ok', 2.4); else if (a.kind === 'radar') banner('تعطّلت منظومة', a.name, 'ok', 2); }
+    const pw = POW[m.k] * (G.mode === 'bat' ? G.up.pow : 1); a.hp = Math.round(((a.hp ?? 1) - pw) * 10) / 10; anyHit = true; if (a.boss && a.hp > 0) G.revenge = Math.min(2, (G.revenge || 0) + 1); if (G.mode === 'bat' && a.hp > 0) scorch(a,ip); if (a.hp <= 0) anyDead = true; if (G.mode === 'bat') G.pops.push({ x: a.x, z: a.z, t: 0, s: a.hp <= 0 ? 'دُمّر' : '−' + pw, c: a.hp <= 0 ? '#ffd166' : '#ff5b45' });
+    if (a.hp <= 0) { a.alive = false; wreck(a,ip); if (G.mode === 'bat') { if (a.kind === 'eoff') banner('دمّرت ' + a.name, 'قلّ إطلاق الخصم عليك', 'ok', 2.2); else if (a.supply) banner('ضربت إمداداته', 'إطلاقه وتلقيم دفاعه صار أبطأ', 'ok', 2.4); else if (a.kind === 'radar') banner('عمّيت ' + a.name, 'منظومته الدفاعية تعطّلت', 'ok', 2.2); } G.score += a.val * 10; log(`دُمّر: ${a.name}`, 'ok'); if (a.mk) a.mk.style.display = 'none'; if (G.AL.goals.includes(a.name)) banner('دُمّر الهدف', a.name, 'ok', 2.4); else if (a.kind === 'radar') banner('تعطّلت منظومة', a.name, 'ok', 2); }
     else log(`أُصيب: ${a.name} · بقي ${a.hp}`, 'warn');
   });
   if (!G.cam.focus && G.cam.mode === 'base' && G.mode !== 'bat') { G.cam.focus = ip.clone(); G.cam.focusT = 2.5; }

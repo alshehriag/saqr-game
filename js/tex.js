@@ -202,5 +202,24 @@ export function buildTextures(q) {
   // ---- أثر احتراق على الأرض
   T.scorch = glow(256, [[0, 'rgba(8,6,5,0.95)'], [0.35, 'rgba(20,15,10,0.8)'], [0.7, 'rgba(40,28,18,0.35)'], [1, 'rgba(60,40,25,0)']]);
 
+  // A single painted service lane, in base-local coordinates (x, z).
+  const yard=canvas(256,512), ink=yard.getContext('2d');
+  ink.setTransform(4,0,0,4,448,240);
+  const stroke=(points,width,color)=>{
+    ink.beginPath(); points.forEach(([x,z],i)=>i ? ink.lineTo(x,z) : ink.moveTo(x,z));
+    ink.lineWidth=width; ink.strokeStyle=color; ink.lineJoin='round'; ink.stroke();
+  };
+  const lane=[[-72,61],[-72,43],[-73,35],[-76,24],[-76,-42],[-78,-47],[-83,-50],[-99,-50]];
+  for(const [width,color] of [[9.6,'#b9a88b'],[8.4,'#9c907b'],[7.4,'#817e75']]){
+    stroke(lane,width,color); stroke([[-76,-14],[-98,-14]],width,color);
+    stroke([[-72,52],[-84,52],[-84,47]],width,color);
+  }
+  for(const d of [-1.25,1.25]){
+    stroke(lane.map(([x,z],i)=>[x+(i<7?d:0),z+(i>=7?d:0)]),.45,'#65645f');
+    stroke([[-76,-14+d],[-98,-14+d]],.4,'#706d65');
+  }
+  for(const z of [-50,-14])stroke([[-95,z-3],[-95,z+3]],.65,'#e3d3a0');
+  stroke([[-87,49],[-81,49]],.65,'#e3d3a0');
+  T.serviceLane=tex(yard,1,true,2);
   return T;
 }
