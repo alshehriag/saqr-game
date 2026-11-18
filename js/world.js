@@ -1,8 +1,8 @@
 // العالم: السماء، التضاريس، القواعد، المجسمات
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { makeNoise } from './tex.js?v=17';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { makeNoise } from './tex.js?v=18';
 
 const N = makeNoise(1234), M = THREE.MathUtils;
 export const HOME = new THREE.Vector3(0, 0, 0);
@@ -72,6 +72,87 @@ const makeTerrain = seg => {
 };
 const ground = makeTerrain(112);
 export function heightAt(x, z) { return ground.surface(x, z); }
+
+// أفق الرياض، مجسمات زخرفية بتوزيع خيالي خارج الساحات.
+function skylineGeometry(bands) {
+  const parts = [], tone = new THREE.Color();
+  let ox = 0, oy = 0, oz = 0;
+  const site = (x,z) => { ox=x; oz=z; oy=heightAt(x,z)-1; };
+  const add = (source, color, x=0, y=0, z=0) => {
+    const g = source.index ? source.toNonIndexed() : source;
+    g.deleteAttribute('uv'); g.translate(ox+x, oy+y, oz+z);
+    const colors = new Float32Array(g.attributes.position.count*3); tone.set(color);
+    for (let i=0; i<colors.length; i+=3) tone.toArray(colors,i);
+    g.setAttribute('color',new THREE.BufferAttribute(colors,3)); parts.push(g);
+  };
+  const box = (w,h,d,color,x,y,z) => add(new THREE.BoxGeometry(w,h,d),color,x,y,z);
+  const cylinder = (rt,rb,h,color,y,segments=16) => add(new THREE.CylinderGeometry(rt,rb,h,segments),color,0,y);
+  // واجهة مربعة تدور أو تضيق أو تميل بين طابقين.
+  const ring = (w,d,y,angle=0,shift=0,slope=0) => [[-1,-1],[-1,1],[1,1],[1,-1]].map(([a,b]) =>
+    [shift+a*w*Math.cos(angle)-b*d*Math.sin(angle),y+a*slope,a*w*Math.sin(angle)+b*d*Math.cos(angle)]);
+  const shell = (lo,hi,color) => {
+    const pos=[];
+    for(let j=0;j<4;j++){ const k=(j+1)%4; pos.push(...lo[j],...lo[k],...hi[k],...lo[j],...hi[k],...hi[j]); }
+    pos.push(...hi[0],...hi[1],...hi[2],...hi[0],...hi[2],...hi[3]);
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.computeVertexNormals(); add(g,color);
+  };
+
+  // المملكة: فتحة حقيقية من خلال التاج وجسر فوقها.
+  site(-135,-318);
+  const crown = new THREE.Shape();
+  crown.moveTo(-17,0); crown.lineTo(17,0); crown.lineTo(16,115); crown.lineTo(13,115);
+  crown.bezierCurveTo(11,91,6,84,0,82); crown.bezierCurveTo(-6,84,-11,91,-13,115);
+  crown.lineTo(-16,115); crown.closePath();
+  add(new THREE.ExtrudeGeometry(crown,{depth:13,bevelEnabled:false,curveSegments:8}),0x95bbcd,0,0,-6.5);
+  box(31,3,9,0xe7edf0,0,114,0);
+  for(let i=1;i<=bands;i++) box(33-i*.12,.6,13.4,0x7495a8,0,78*i/(bands+1),0);
+
+  // مجدول: نفس المسقط يدور تدريجياً حتى السطح.
+  site(-223,-336);
+  for(let i=0;i<bands;i++){
+    const t=i/bands, next=(i+1)/bands, section=u=>ring(10,9,92*u,u*2.18);
+    shell(section(t),section(next-.09/bands),0x7ca3b5);
+    shell(section(next-.09/bands),section(next),0xbccbd0);
+  }
+
+  // الفيصلية: هيكل مفتوح يحمل الكرة الذهبية وينتهي بسارية رفيعة.
+  site(-38,-326);
+  const facade=u=>ring(15-10*u,13-9*u,72*u,.16);
+  shell(facade(0),facade(1),0x90a5a7);
+  for(let i=1;i<bands;i++) { const u=i/bands; shell(facade(u),facade(u+.012),0xdbd2bb); }
+  add(new THREE.SphereGeometry(6.2,18,12),0xe5b452,0,81);
+  for(const [a,b] of [[-1,-1],[-1,1],[1,1],[1,-1]]){
+    const from=new THREE.Vector3(a*6.8,70,b*5.4), to=new THREE.Vector3(a*.45,99,b*.45), delta=to.clone().sub(from);
+    const g=new THREE.CylinderGeometry(.52,.78,delta.length(),5);
+    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize()));
+    const mid=from.lerp(to,.5); add(g,0xd5bf90,mid.x,mid.y,mid.z);
+  }
+  cylinder(.18,.64,13,0xe0d5b5,105);
+
+  // رافال: واجهة زجاجية طويلة فوق قاعدة حجرية وتاج متدرج.
+  site(49,-345);
+  box(34,6,24,0xc29d75,0,3,0);
+  shell(ring(12,9,5,-.12),ring(12,9,96,-.12),0x668fa3);
+  shell(ring(11,8,96,-.12),ring(8,6,107,-.12,2,3),0x91acb7);
+  box(1.3,94,1.3,0xd0c4ac,-9,51,10); box(1.3,90,1.3,0xd0c4ac,9,49,8);
+  for(let i=1;i<=bands;i++) shell(ring(12.1,9.1,6+i*85/(bands+1),-.12),ring(12.1,9.1,6.7+i*85/(bands+1),-.12),0xa9bec3);
+
+  // أبراج المالية: مجموعة واجهات مضلعة وأسقف مائلة بارتفاعات مختلفة.
+  for(const [x,z,h,w,angle,color] of [[119,-395,70,12,.32,0x93aab4],[150,-378,105,14,-.28,0x729cac],[186,-405,81,12,.48,0x91b6be],[212,-380,49,10,-.1,0xb0bab4]]) {
+    site(x,z); const waist=ring(w*.85,w*.68,h*.60,angle+.18,2);
+    shell(ring(w,w*.74,0,angle),waist,color);
+    shell(waist,ring(w*.64,w*.55,h,angle-.06,-2,h*.085),color);
+  }
+
+  // برج المياه: ساق خرسانية، خزان يتسع للأعلى وحزام علوي.
+  site(268,-310);
+  cylinder(3.8,5.2,36,0xd9c8a6,18); cylinder(15,4,12,0xbb945f,42);
+  cylinder(15,15,3.2,0xd8bf8f,49.6); cylinder(14.6,14.6,2.3,0x667e87,52.35);
+  cylinder(9,15,2.4,0xd9c69f,54.7); cylinder(.25,.4,5,0xa6a49c,58);
+  const merged=mergeGeometries(parts,false); parts.forEach(g=>g.dispose()); return merged;
+}
+
+
 
 export const TIMES = {
   day:    { elev: 36, az: 232, sunI: 5.2, sunC: 0xffebcf, hemi: [0xbcd3ee, 0x9a7a52, 1.25], fog: 0xc7ab8a, fogD: 0.000116, exp: 0.3, turb: 4.2, ray: 1.35, mie: 0.005, mieG: 0.82, env: 1.0 },
@@ -231,9 +312,13 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
       layer.mesh.count = count * layer.pieces;
       layer.mesh.computeBoundingSphere();
     }
-    if (W.ridge && W.ridge.geometry !== ridgeGeometries[Q.ridgeDetail]) { W.ridge.geometry = ridgeGeometries[Q.ridgeDetail]; W.ridge.computeBoundingSphere(); }
+    if (skylineBands !== Q.landmarkBands) {
+      const previous = skyline.geometry; skyline.geometry = skylineGeometry(Q.landmarkBands); previous.dispose(); skylineBands = Q.landmarkBands;
+    }
   };
-  const ridgeGeometries = {};
+  let skylineBands = Q.landmarkBands;
+  const skyline = new THREE.Mesh(skylineGeometry(skylineBands), mat({vertexColors:true,roughness:0.52,metalness:0.24}));
+  skyline.name = 'Riyadh skyline'; scene.add(skyline);
 
   // ---------- مجسمات
   const wheel = () => { const g = new THREE.Group(), t = cyl(0.72, 0.72, 0.5, MT.rubber, 22), h = cyl(0.36, 0.36, 0.54, MT.steel, 12); t.rotation.z = h.rotation.z = Math.PI / 2; g.add(t, h); return g; };
@@ -395,7 +480,7 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
       W.colliders.forEach(c => { if (c.enemy === enemy && !c._s) { c.r *= S; c.h *= S; c._s = 1; } }); }
     const bermM = MT.berm, flag = (x, z, c) => { const p = cyl(0.12, 0.16, 16, MT.steel, 8); p.position.set(x, 8, z); B.add(p); const f = new THREE.Mesh(new THREE.PlaneGeometry(7, 4.2), new THREE.MeshStandardMaterial({ color: c, roughness: 0.8, side: THREE.DoubleSide })); f.position.set(x + 3.6, 13.6, z); B.add(f); };
     if (enemy) {
-      // قاعدة الخصم: مخطط معكوس، أرضية حصوية داكنة، سواتر حول الحظائر، صخور وسلسلة تلال خلفها، بلا نخيل
+      // قاعدة الخصم: مخطط معكوس، أرضية حصوية داكنة، سواتر حول الحظائر، صخور حولها، بلا نخيل
       B.children.forEach(c => { if (c.isInstancedMesh) return; c.position.x *= -1; c.rotation.y *= -1; });
       W.colliders.forEach(c => { if (c.enemy && !c._m) { c.x = origin.x - (c.x - origin.x); c._m = 1; } });
       B.children.filter(c => c.userData && c.userData.palm).forEach(c => { c.visible = false; });
@@ -403,28 +488,6 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
       for (const sx of [103, 137]) { const r = box(3, 5, 82, bermM, sx, 2.5, -32); B.add(r); } B.add(box(37, 5, 3, bermM, 120, 2.5, -74));
       const rk = MT.rock || (MT.rock = mat({ color: 0x75685a, map: T.sand, roughness: 1, metalness: 0 }));
       { const n = 54, im = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), rk, n), d = new THREE.Object3D(); for (let i = 0; i < n; i++) { const a = Math.PI * (0.94 + (i / n) * 1.12) + Math.random() * 0.1, r = 262 + Math.random() * 120, s = 4 + Math.random() * 11; d.position.set(Math.cos(a) * r, s * 0.25, Math.sin(a) * r * 0.95 - 20); d.scale.set(s, s * (0.5 + Math.random() * 0.5), s * (0.7 + Math.random() * 0.6)); d.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3); d.updateMatrix(); im.setMatrixAt(i, d.matrix); } im.castShadow = im.receiveShadow = true; B.add(im); }
-      {
-        for (let detail = 1; detail <= desertBudget.ridgeDetail; detail++) {
-          const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position, colors = [];
-          for (let i = 0; i < p.count; i++) {
-            const x = p.getX(i), y = p.getY(i), z = p.getZ(i), h = (y + 1) / 2;
-            const cut = N.fbm(x * 3 + 14, z * 3 + y + 8, 2), ledge = 0.08 * Math.sin(h * 25 + cut * 3);
-            const width = (1.28 - h * 0.55) * (0.82 + cut * 0.38 + ledge);
-            p.setXYZ(i, x * width + h * 0.18, (h + cut * h * 0.16) / 1.08, z * width);
-            const band = 0.88 + 0.11 * Math.cos(h * 18 + cut) + cut * 0.13;
-            colors.push(band, band * (0.93 + h * 0.06), band * (0.91 + h * 0.08));
-          }
-          g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); g.deleteAttribute('normal'); g.deleteAttribute('uv');
-          const smooth = mergeVertices(g); smooth.computeVertexNormals(); g.dispose(); ridgeGeometries[detail] = smooth;
-        }
-        const n = 9, im = new THREE.InstancedMesh(ridgeGeometries[Q.ridgeDetail], mat({ color: 0xa58062, roughness: 1, vertexColors: true }), n), d = new THREE.Object3D();
-        for (let i = 0; i < n; i++) {
-          const x = -520 + i * 130 + rand() * 40, z = -475 - rand() * 100, h = 52 + rand() * 65, w = 86 + rand() * 63;
-          d.position.set(x, heightAt(origin.x + x, origin.z + z) - h * 0.48, z);
-          d.scale.set(w, h * 1.32, w * (0.64 + rand() * 0.35)); d.rotation.y = rand() * Math.PI * 2; d.updateMatrix(); im.setMatrixAt(i, d.matrix);
-        }
-        im.receiveShadow = true; B.add(im); W.ridge = im;
-      }
       flag(18, 14, 0xb3261e);
     } else {
       // قاعدتنا: مهبط مروحيات، خزان ماء، سارية علم، ونخيل أكثر
