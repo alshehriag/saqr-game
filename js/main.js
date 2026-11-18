@@ -11,9 +11,9 @@ const store = { get(k, d) { try { return localStorage.getItem('sd3_' + k) ?? d; 
 
 // ---------- الجودة
 const TIERS = {
-  low: { prMax: 1, shadows: false, bloom: false, blur: false, heat: false, flare: false, rate: 0.4, terrainSeg: 84, rocks: 76, shrubs: 22, ridgeDetail: 1, sandAniso: 2 },
-  med: { prMax: 1.25, shadows: true, bloom: true, blur: false, heat: false, flare: true, rate: 0.65, terrainSeg: 144, rocks: 160, shrubs: 64, ridgeDetail: 1, sandAniso: 4 },
-  high: { prMax: 2, shadows: true, bloom: true, blur: true, heat: true, flare: true, rate: 1, terrainSeg: 200, rocks: 260, shrubs: 120, ridgeDetail: 2, sandAniso: 8 },
+  low: { prMax: 1, shadows: false, bloom: false, blur: false, heat: false, flare: false, rate: 0.4, rocks: 76, shrubs: 22, ridgeDetail: 1, sandAniso: 2 },
+  med: { prMax: 1.25, shadows: true, bloom: true, blur: false, heat: false, flare: true, rate: 0.65, rocks: 160, shrubs: 64, ridgeDetail: 1, sandAniso: 4 },
+  high: { prMax: 2, shadows: true, bloom: true, blur: true, heat: true, flare: true, rate: 1, rocks: 260, shrubs: 120, ridgeDetail: 2, sandAniso: 8 },
 };
 const Q = { post: true, shadowMap: 1024, palms: 18, msaa: 0, auto: true, tier: 'med', pr: 1, ...TIERS.med };
 let qPref = store.get('q', 'auto');

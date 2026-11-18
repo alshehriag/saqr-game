@@ -11,7 +11,7 @@ const FLAT_R = 300;
 
 // ---------- ارتفاع الأرض: كثبان غير متناظرة (سفح ريح لطيف + وجه انزلاق حاد)
 function duneProfile(t) { t -= Math.floor(t); return t < 0.7 ? M.smootherstep(t / 0.7, 0, 1) : M.smootherstep((1 - t) / 0.3, 0, 1); }
-export function heightAt(x, z) {
+function duneHeight(x, z) {
   const big = N.fbm(x / 2700 + 40, z / 2700 + 40, 3) - 0.5;
   const warp = N.fbm(x / 1500 + 11, z / 1500 + 3, 2) * 2.2;
   const a = 0.28 + N.fbm(x / 1800 + 70, z / 1800 + 20, 2);
@@ -24,6 +24,54 @@ export function heightAt(x, z) {
   const yard = origin => M.smoothstep(Math.max(Math.abs(x - origin.x), Math.abs(z - origin.z)), 234, 315);
   return h * Math.min(f, yard(HOME), yard(ENEMY));
 }
+
+const size = 15000, cx = ENEMY.x / 2, cz = ENEMY.z / 2;
+// نقاط أكثر حول القاعدتين وبينهما؛ شبكة واحدة بلا شقوق عند الانتقال.
+const axis = (cuts, seg) => {
+  const values = [cuts[0][0]];
+  for (let i = 1; i < cuts.length; i++) {
+    const n = Math.max(1, Math.round(seg * cuts[i][1]));
+    for (let j = 1; j <= n; j++) values.push(M.lerp(cuts[i - 1][0], cuts[i][0], j / n));
+  }
+  return Float32Array.from(values);
+};
+const makeTerrain = seg => {
+  const xs = axis([[cx - size / 2], [-950, .12], [-234, .20], [494, .36], [1210, .20], [cx + size / 2, .12]], seg);
+  const zs = axis([[cz - size / 2], [-6450, .065], [ENEMY.z - 234, .115], [ENEMY.z + 234, .115], [-234, .39], [234, .115], [1100, .125], [cz + size / 2, .075]], seg);
+  const nx = xs.length, nz = zs.length, g = new THREE.PlaneGeometry(1, 1, nx - 1, nz - 1);
+  const p = g.attributes.position, uv = g.attributes.uv, col = new Float32Array(p.count * 3);
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+    const k = j * nx + i, x = xs[i], z = zs[j], h = duneHeight(x, z);
+    p.setXYZ(k, x, h, z); uv.setXY(k, (x - cx) / size + 0.5, 0.5 - (z - cz) / size);
+    const v = 0.89 + (N.fbm(x / 890, z / 890, 3) - 0.5) * 0.27 + M.clamp(h / 100, -0.24, 0.3) * 0.15;
+    const warm = N.fbm(x / 1650 + 8, z / 1650, 2);
+    col[k * 3] = v * (1 + warm * 0.045); col[k * 3 + 1] = v * 0.98; col[k * 3 + 2] = v * (0.96 - warm * 0.1);
+  }
+  // كل خلية تلامس دائرة التسوية تبقى مستوية بكاملها، حتى عند حافة القاعدة.
+  for (const base of [HOME, ENEMY]) for (let j = 0; j < nz - 1; j++) for (let i = 0; i < nx - 1; i++) {
+    const dx = M.clamp(base.x, xs[i], xs[i + 1]) - base.x, dz = M.clamp(base.z, zs[j], zs[j + 1]) - base.z;
+    if (dx * dx + dz * dz > FLAT_R * FLAT_R) continue;
+    const k = j * nx + i;
+    p.setY(k, 0); p.setY(k + 1, 0); p.setY(k + nx, 0); p.setY(k + nx + 1, 0);
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+  // ارتفاع اللعبة من نفس المثلث المرسوم على جميع الأجهزة.
+  const cell = (values, x) => {
+    let lo = 0, hi = values.length - 1;
+    while (hi - lo > 1) { const mid = (hi + lo) >> 1; if (x < values[mid]) hi = mid; else lo = mid; }
+    return lo;
+  };
+  const surface = (x, z) => {
+    if (x < xs[0] || x > xs[nx - 1] || z < zs[0] || z > zs[nz - 1]) return duneHeight(x, z);
+    const i = cell(xs, x), j = cell(zs, z), k = j * nx + i;
+    const u = (x - xs[i]) / (xs[i + 1] - xs[i]), v = (z - zs[j]) / (zs[j + 1] - zs[j]);
+    const a = p.getY(k), b = p.getY(k + nx), c = p.getY(k + 1), d = p.getY(k + nx + 1);
+    return u + v <= 1 ? a + (b - a) * v + (c - a) * u : d + (b - d) * (1 - u) + (c - d) * (1 - v);
+  };
+  return { g, surface };
+};
+const ground = makeTerrain(112);
+export function heightAt(x, z) { return ground.surface(x, z); }
 
 export const TIMES = {
   day:    { elev: 36, az: 232, sunI: 5.2, sunC: 0xffebcf, hemi: [0xbcd3ee, 0x9a7a52, 1.25], fog: 0xc7ab8a, fogD: 0.000116, exp: 0.3, turb: 4.2, ray: 1.35, mie: 0.005, mieG: 0.82, env: 1.0 },
@@ -118,50 +166,12 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
   const tiled = (m, rx, ry) => { const c = m.clone(); ['map', 'normalMap'].forEach(k => { if (c[k]) { c[k] = c[k].clone(); c[k].repeat.set(rx, ry); } }); return c; };
 
   // ---------- التضاريس
-  const size = 15000, cx = ENEMY.x / 2, cz = ENEMY.z / 2;
   const sand = mat({ map: T.sand.clone(), normalMap: T.sandN.clone(), roughness: 1, metalness: 0, vertexColors: true });
   sand.map.repeat.setScalar(size / 14); sand.normalMap.repeat.setScalar(size / 14);
   sand.normalScale.setScalar(0.24); sand.userData.envK = 0.32;
   sand.onBeforeCompile = shader => {
     shader.fragmentShader = shader.fragmentShader.replace('#include <tonemapping_fragment>',
       'gl_FragColor.rgb *= min(1.0, 2.35 / max(dot(gl_FragColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.001));\n#include <tonemapping_fragment>');
-  };
-  const desertMeshes = new Map();
-  // نقاط أكثر حول القاعدتين وبينهما؛ شبكة واحدة بلا شقوق عند الانتقال.
-  const axis = (cuts, seg) => {
-    const values = [cuts[0][0]];
-    for (let i = 1; i < cuts.length; i++) {
-      const n = Math.max(1, Math.round(seg * cuts[i][1]));
-      for (let j = 1; j <= n; j++) values.push(M.lerp(cuts[i - 1][0], cuts[i][0], j / n));
-    }
-    return values;
-  };
-  const makeTerrain = seg => {
-    const xs = axis([[cx - size / 2], [-950, .12], [-234, .20], [494, .36], [1210, .20], [cx + size / 2, .12]], seg);
-    const zs = axis([[cz - size / 2], [-6450, .065], [ENEMY.z - 234, .115], [ENEMY.z + 234, .115], [-234, .39], [234, .115], [1100, .125], [cz + size / 2, .075]], seg);
-    const nx = xs.length, nz = zs.length, g = new THREE.PlaneGeometry(1, 1, nx - 1, nz - 1);
-    const p = g.attributes.position, uv = g.attributes.uv, col = new Float32Array(p.count * 3);
-    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
-      const k = j * nx + i, x = xs[i], z = zs[j], h = heightAt(x, z);
-      p.setXYZ(k, x, h, z); uv.setXY(k, (x - cx) / size + 0.5, 0.5 - (z - cz) / size);
-      const v = 0.89 + (N.fbm(x / 890, z / 890, 3) - 0.5) * 0.27 + M.clamp(h / 100, -0.24, 0.3) * 0.15;
-      const warm = N.fbm(x / 1650 + 8, z / 1650, 2);
-      col[k * 3] = v * (1 + warm * 0.045); col[k * 3 + 1] = v * 0.98; col[k * 3 + 2] = v * (0.96 - warm * 0.1);
-    }
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
-    // نفس مثلثات الشبكة لتثبيت العناصر الصغيرة حتى عند تغيير الجودة.
-    const cell = (values, x) => {
-      let lo = 0, hi = values.length - 1;
-      while (hi - lo > 1) { const mid = (hi + lo) >> 1; if (x < values[mid]) hi = mid; else lo = mid; }
-      return lo;
-    };
-    const surface = (x, z) => {
-      const i = cell(xs, x), j = cell(zs, z), k = j * nx + i;
-      const u = (x - xs[i]) / (xs[i + 1] - xs[i]), v = (z - zs[j]) / (zs[j + 1] - zs[j]);
-      const a = p.getY(k), b = p.getY(k + nx), c = p.getY(k + 1), d = p.getY(k + nx + 1);
-      return u + v <= 1 ? a + (b - a) * v + (c - a) * u : d + (b - d) * (1 - u) + (c - d) * (1 - v);
-    };
-    return { g, surface };
   };
   { // أرض ممتدة حتى الأفق تحت حافة التضاريس
     const d = new THREE.Mesh(new THREE.CircleGeometry(45000, 48), mat({ color: 0xb89a70, roughness: 1 })); d.rotation.x = -Math.PI / 2; d.position.set(ENEMY.x / 2, -70, ENEMY.z / 2); scene.add(d);
@@ -178,9 +188,7 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
     const m = new THREE.Mesh(g, mat({ color: 0x8a7558, roughness: 1, side: THREE.BackSide, flatShading: true }));
     m.position.set(ENEMY.x / 2, 0, ENEMY.z / 2); scene.add(m);
   }
-  const firstTerrain = makeTerrain(Q.terrainSeg);
-  const terrain = W.terrain = new THREE.Mesh(firstTerrain.g, sand); terrain.receiveShadow = true; scene.add(terrain);
-  desertMeshes.set(Q.terrainSeg, firstTerrain);
+  const terrain = W.terrain = new THREE.Mesh(ground.g, sand); terrain.receiveShadow = true; scene.add(terrain);
   // صخور وشجيرات متناثرة خارج الساحات والطرق؛ دون ظلال إضافية.
   const rockGeo = new THREE.DodecahedronGeometry(1, 0), rp = rockGeo.attributes.position;
   for (let i = 0; i < rp.count; i++) {
@@ -190,44 +198,38 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
   rockGeo.computeVertexNormals();
   const shrubGeo = new THREE.IcosahedronGeometry(1, 0);
   const scatter = [
-    { key: 'rocks', g: rockGeo, mat: MT.rock, tint: new THREE.Color(0xa88c70), points: [] },
-    { key: 'shrubs', g: shrubGeo, mat: mat({ color: 0x8e8960, roughness: 1, flatShading: true }), tint: new THREE.Color(0xb8ae86), points: [] },
+    { key: 'rocks', g: rockGeo, mat: MT.rock, tint: new THREE.Color(0xa88c70) },
+    { key: 'shrubs', g: shrubGeo, mat: mat({ color: 0x8e8960, roughness: 1, flatShading: true }), tint: new THREE.Color(0xb8ae86) },
   ];
-  const dummy = new THREE.Object3D(), tint = new THREE.Color(), white = new THREE.Color(0xffffff), dmat = new THREE.Matrix4();
+  const dummy = new THREE.Object3D(), tint = new THREE.Color(), white = new THREE.Color(0xffffff);
   for (const layer of scatter) {
     const shrub = layer.key === 'shrubs', pieces = shrub ? 3 : 1, total = desertBudget[layer.key] ?? 0;
-    layer.pieces = pieces; layer.mesh = new THREE.InstancedMesh(layer.g, layer.mat, total * pieces);
-    for (let attempts = 0; layer.points.length < total && attempts < total * 12; attempts++) {
+    layer.pieces = pieces; layer.count = 0; layer.mesh = new THREE.InstancedMesh(layer.g, layer.mat, total * pieces);
+    for (let attempts = 0; layer.count < total && attempts < total * 12; attempts++) {
       const base = rand() < 0.5 ? HOME : ENEMY, a = rand() * Math.PI * 2, r = 340 + rand() * 440;
       const near = rand() < 0.45, x = near ? base.x + Math.cos(a) * r : cx + (rand() - 0.5) * 3300;
       const z = near ? base.z + Math.sin(a) * r : ENEMY.z - 720 + rand() * 6640;
       if ([HOME, ENEMY].some(o => Math.abs(x - o.x) < 310 && Math.abs(z - o.z) < 290)) continue;
       if (rand() > 0.24 + N.fbm(x / 350 + 24, z / 350 + 7, 2) * 0.95) continue;
       const s = shrub ? 0.8 + rand() * 2.6 : 0.75 + rand() ** 2 * 3.5, turn = rand() * Math.PI * 2;
-      const parts = [];
+      const first = layer.count * pieces;
       for (let i = 0; i < pieces; i++) {
         const angle = turn + i * 2.39996, k = shrub ? s * (0.48 + rand() * 0.36) : s;
         dummy.position.set(x + (shrub ? Math.cos(angle) * s * 0.38 : 0), shrub ? k * 0.25 : -k * 0.09, z + (shrub ? Math.sin(angle) * s * 0.38 : 0));
         dummy.rotation.set(shrub ? 0.26 : rand() * 0.4, angle, 0);
-        dummy.scale.set(k, k * (shrub ? 0.56 + rand() * 0.4 : 0.76), k * 0.76); dummy.updateMatrix(); parts.push(dummy.matrix.clone());
-        layer.mesh.setColorAt((layer.points.length * pieces) + i, tint.copy(layer.tint).lerp(white, rand() * 0.7));
+        dummy.scale.set(k, k * (shrub ? 0.56 + rand() * 0.4 : 0.76), k * 0.76); dummy.position.y += heightAt(dummy.position.x, dummy.position.z); dummy.updateMatrix(); layer.mesh.setMatrixAt(first + i, dummy.matrix);
+        layer.mesh.setColorAt(first + i, tint.copy(layer.tint).lerp(white, rand() * 0.7));
       }
-      layer.points.push(parts);
+      layer.count++;
     }
     scene.add(layer.mesh);
   }
   W.setDesertQuality = () => {
-    if (!desertMeshes.has(Q.terrainSeg)) desertMeshes.set(Q.terrainSeg, makeTerrain(Q.terrainSeg));
-    const { g, surface } = desertMeshes.get(Q.terrainSeg);
-    terrain.geometry = g;
     for (const t of [sand.map, sand.normalMap]) if (t.anisotropy !== Q.sandAniso) { t.anisotropy = Q.sandAniso; t.needsUpdate = true; }
     for (const layer of scatter) {
-      const count = Math.min(layer.points.length, Q[layer.key] ?? 0);
+      const count = Math.min(layer.count, Q[layer.key] ?? 0);
       layer.mesh.count = count * layer.pieces;
-      for (let i = 0; i < count; i++) layer.points[i].forEach((m, j) => {
-        dmat.copy(m); const e = dmat.elements; e[13] += surface(e[12], e[14]); layer.mesh.setMatrixAt(i * layer.pieces + j, dmat);
-      });
-      layer.mesh.instanceMatrix.needsUpdate = true; layer.mesh.computeBoundingSphere();
+      layer.mesh.computeBoundingSphere();
     }
     if (W.ridge && W.ridge.geometry !== ridgeGeometries[Q.ridgeDetail]) { W.ridge.geometry = ridgeGeometries[Q.ridgeDetail]; W.ridge.computeBoundingSphere(); }
   };
@@ -418,8 +420,8 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
         const n = 9, im = new THREE.InstancedMesh(ridgeGeometries[Q.ridgeDetail], mat({ color: 0xa58062, roughness: 1, vertexColors: true }), n), d = new THREE.Object3D();
         for (let i = 0; i < n; i++) {
           const x = -520 + i * 130 + rand() * 40, z = -475 - rand() * 100, h = 52 + rand() * 65, w = 86 + rand() * 63;
-          d.position.set(x, heightAt(origin.x + x, origin.z + z) - 18, z);
-          d.scale.set(w, h, w * (0.64 + rand() * 0.35)); d.rotation.y = rand() * Math.PI * 2; d.updateMatrix(); im.setMatrixAt(i, d.matrix);
+          d.position.set(x, heightAt(origin.x + x, origin.z + z) - h * 0.48, z);
+          d.scale.set(w, h * 1.32, w * (0.64 + rand() * 0.35)); d.rotation.y = rand() * Math.PI * 2; d.updateMatrix(); im.setMatrixAt(i, d.matrix);
         }
         im.receiveShadow = true; B.add(im); W.ridge = im;
       }
