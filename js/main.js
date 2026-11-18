@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js?v=19';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=19';
-import { buildFX } from './fx.js?v=19';
+import { buildTextures } from './tex.js?v=20';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=20';
+import { buildFX } from './fx.js?v=20';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
@@ -426,6 +426,13 @@ function launchOne(k, t) {
 }
 function followShot(m) { if (!m.alive) return; G.follow = m; G.cam.mode = 'follow'; G.cam.t = 0;[...$('chips').children].forEach(c => c.classList.toggle('on', c === m.chip)); show('backb', true); }
 function toBase() { G.follow = null; G.cam.mode = (G.mode === 'bat' && G.foeView && G.state !== 'menu') ? 'foe' : (G.mode === 'bat' && !G.topView && G.state !== 'menu') ? 'ground' : 'base'; G.cam.t = 0;[...$('chips').children].forEach(c => c.classList.remove('on')); show('backb', false); }
+// إحساس المسافة باستخدام صوت الاصطدام والرجّة الموجودين في اللعبة.
+function groundBoom(pos, strength) {
+  const distance=camera.position.distanceTo(pos), near=1-M.smoothstep(distance,80,1750);
+  const play=distance>850 ? boomFar : boom;
+  play(strength*(.42+.58*near),Math.min(1.4,distance/2300));
+  G.camShake=Math.max(G.camShake||0,.55*near*near*Math.min(1.3,strength));
+}
 function endShot(m) { m.alive = false; if (m.obj) scene.remove(m.obj); if (m.chip) m.chip.remove(); if (G.follow === m) { G.cam.mode = 'blast'; G.cam.t = 0; G.blast = m.pos.clone(); G.follow = null; } }
 function killTrack(t, byUs) {
   if (t.nid && G.pvp) netSend(byUs ? 'x' : 'h', { id: t.nid });
@@ -444,14 +451,13 @@ function resolve(s, t) {
 }
 function impact(t) { // ضرر موضعي حول نقطة السقوط فقط
   const ip = t.pos.clone(); ip.y = Math.max(0, heightAt(ip.x, ip.z)); const K = t.K;
-  F.explode(ip, K.drone ? 0.6 : (t.k === 'b' ? 1.6 : 1.1), { ground: true, vel: t.vel, debris: 40 }); boom(1.2);
+  F.explode(ip, K.drone ? 0.6 : (t.k === 'b' ? 1.6 : 1.1), { ground: true, vel: t.vel, debris: 40 }); groundBoom(ip,1.2);
   const hit = G.assets.filter(a => a.alive && Math.hypot(a.x - ip.x, a.z - ip.z) < K.dmgR + a.r);
   hit.forEach(a => { if (G.pvp && (a.hp ?? 1) > 1) { a.hp--; scorch(a); log(`إصابة: ${a.name}`, 'bad'); return; } a.alive = false; wreck(a); log(`دُمّر: ${a.name}`, 'bad'); if (a.kind === 'ew') { G.rCap = 10000; banner('دُمّر رادار الإنذار المبكر', 'مدى الكشف صار 10 كم', 'warn', 3); } });
   G.leaks++; killTrack(t, false);
   if (hit.length) { const rad = hit.find(a => a.kind === 'radar'); banner(rad ? 'دُمّر ' + rad.name : 'إصابة في القاعدة', hit.map(a => a.name).join('، '), 'warn', 2.8); }
   else banner('سقط داخل القاعدة', 'بلا ضرر على المنظومات', 'warn', 2);
   G.lastHome = ip.clone(); if (G.cam.mode === 'base' && G.mode !== 'bat') { G.cam.focus = ip.clone().setY(0); G.cam.focusT = 4; }
-  G.camShake = Math.max(0, 1 - camera.position.distanceTo(ip) / 2500);
 }
 
 function update(dt, rdt) {
@@ -871,8 +877,8 @@ function eResolve(s, m) {
   return hit;
 }
 function munImpact(m) {
-  if (G.pvp) { const ip = m.pos.clone(); ip.y = 0; F.explode(ip, (m.K.drone ? 0.6 : (m.k === 'b' ? 1.6 : 1.1)) * 1.3, { ground: true, vel: m.vel, debris: 40 }); boomFar(m.k === 'b' ? 1.1 : 0.8, 0.8); G.camShake = Math.max(G.camShake || 0, 0.3); G.ws.hit++; endShot(m); return; }
-  const ip = m.pos.clone(); ip.y = 0; F.explode(ip, (m.K.drone ? 0.6 : (m.k === 'b' ? 1.6 : 1.1)) * (G.mode === 'bat' ? 1.3 : 1), { ground: true, vel: m.vel, debris: 40 }); if (G.mode === 'bat') { boomFar(m.k === 'b' ? 1.1 : 0.8, 0.8); G.camShake = Math.max(G.camShake || 0, 0.3); } else boom(1.1, Math.min(1.2, camera.position.distanceTo(ip) / 3000)); G.ws.hit++; let anyHit = false, anyDead = false;
+  if (G.pvp) { const ip = m.pos.clone(); ip.y = 0; F.explode(ip, (m.K.drone ? 0.6 : (m.k === 'b' ? 1.6 : 1.1)) * 1.3, { ground: true, vel: m.vel, debris: 40 }); groundBoom(ip,m.k === 'b' ? 1.1 : .8); G.ws.hit++; endShot(m); return; }
+  const ip = m.pos.clone(); ip.y = 0; F.explode(ip, (m.K.drone ? 0.6 : (m.k === 'b' ? 1.6 : 1.1)) * (G.mode === 'bat' ? 1.3 : 1), { ground: true, vel: m.vel, debris: 40 }); groundBoom(ip,G.mode === 'bat' && m.k !== 'b' ? .8 : 1.1); G.ws.hit++; let anyHit = false, anyDead = false;
   G.eA.filter(a => a.alive && Math.hypot(a.x - ip.x, a.z - ip.z) < m.K.dmgR + a.r).forEach(a => {
     const pw = POW[m.k] * (G.mode === 'bat' ? G.up.pow : 1); a.hp = Math.round(((a.hp ?? 1) - pw) * 10) / 10; anyHit = true; if (a.boss && a.hp > 0) G.revenge = Math.min(2, (G.revenge || 0) + 1); if (G.mode === 'bat' && a.hp > 0) scorch(a); if (a.hp <= 0) anyDead = true; if (G.mode === 'bat') G.pops.push({ x: a.x, z: a.z, t: 0, s: a.hp <= 0 ? 'دُمّر' : '−' + pw, c: a.hp <= 0 ? '#ffd166' : '#ff5b45' });
     if (a.hp <= 0) { a.alive = false; wreck(a); if (G.mode === 'bat') { if (a.kind === 'eoff') banner('دمّرت ' + a.name, 'قلّ إطلاق الخصم عليك', 'ok', 2.2); else if (a.supply) banner('ضربت إمداداته', 'إطلاقه وتلقيم دفاعه صار أبطأ', 'ok', 2.4); else if (a.kind === 'radar') banner('عمّيت ' + a.name, 'منظومته الدفاعية تعطّلت', 'ok', 2.2); } G.score += a.val * 10; log(`دُمّر: ${a.name}`, 'ok'); if (a.mk) a.mk.style.display = 'none'; if (G.AL.goals.includes(a.name)) banner('دُمّر الهدف', a.name, 'ok', 2.4); else if (a.kind === 'radar') banner('تعطّلت منظومة', a.name, 'ok', 2); }
@@ -880,7 +886,7 @@ function munImpact(m) {
   });
   if (!G.cam.focus && G.cam.mode === 'base' && G.mode !== 'bat') { G.cam.focus = ip.clone(); G.cam.focusT = 2.5; }
   if (G.state !== 'cine' && G.AL.goals.every(n => !G.eA.find(x => x.name === n).alive)) { const gl = G.eA.find(x => x.name === G.AL.goals[G.AL.goals.length - 1]); startCine(gl.alive ? ip : tC.set(gl.x, 0, gl.z), () => G.mode === 'atk' ? finishAtk(true) : finishBat(true), 'دُمّر الهدف', 'كل أهداف الخصم المطلوبة سقطت', true); }
-  if (G.mode !== 'bat') G.camShake = Math.max(0, 1 - camera.position.distanceTo(ip) / 2500); endShot(m);
+  endShot(m);
   if (G.mode === 'bat') { if (anyHit) hitCall(anyDead); else G.pops.push({ x: ip.x, z: ip.z, t: 0, s: 'خارج الهدف', c: '#cccccc' }); }
 }
 function updateAtk(dt, rdt) {
