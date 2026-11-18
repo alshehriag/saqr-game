@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { makeNoise } from './tex.js?v=19';
+import { makeNoise } from './tex.js?v=20';
 
 const N = makeNoise(1234), M = THREE.MathUtils;
 export const HOME = new THREE.Vector3(0, 0, 0);
@@ -25,6 +25,8 @@ function duneHeight(x, z) {
   return h * Math.min(f, yard(HOME), yard(ENEMY));
 }
 
+const roadZ = x => -351 - x * .27 + 24 * Math.sin(x / 330);
+const roadGrade = x => 9 * M.smootherstep(x,440,1550) - 5 * M.smootherstep(-x,440,1470);
 const size = 15000, cx = ENEMY.x / 2, cz = ENEMY.z / 2;
 // نقاط أكثر حول القاعدتين وبينهما؛ شبكة واحدة بلا شقوق عند الانتقال.
 const axis = (cuts, seg) => {
@@ -41,7 +43,13 @@ const makeTerrain = seg => {
   const nx = xs.length, nz = zs.length, g = new THREE.PlaneGeometry(1, 1, nx - 1, nz - 1);
   const p = g.attributes.position, uv = g.attributes.uv, col = new Float32Array(p.count * 3);
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
-    const k = j * nx + i, x = xs[i], z = zs[j], h = duneHeight(x, z);
+    const k = j * nx + i, x = xs[i], z = zs[j];
+    // نسوّي كامل الخلايا التي تمر بها الحارات، ثم ندمج الأكتاف مع الكثبان.
+    const dx = Math.max(x-(xs[i-1]??x),(xs[i+1]??x)-x);
+    const dz = Math.max(z-(zs[j-1]??z),(zs[j+1]??z)-z);
+    const shoulder = Math.abs(z-roadZ(x)) - (32+dz+.35*dx);
+    const blend = (1-M.smoothstep(shoulder,0,115)) * (1-M.smoothstep(Math.abs(x)-dx,1730,1880));
+    const h = M.lerp(duneHeight(x,z),roadGrade(x),blend);
     p.setXYZ(k, x, h, z); uv.setXY(k, (x - cx) / size + 0.5, 0.5 - (z - cz) / size);
     const v = 0.89 + (N.fbm(x / 890, z / 890, 3) - 0.5) * 0.27 + M.clamp(h / 100, -0.24, 0.3) * 0.15;
     const warm = N.fbm(x / 1650 + 8, z / 1650, 2);
@@ -74,7 +82,7 @@ const ground = makeTerrain(112);
 export function heightAt(x, z) { return ground.surface(x, z); }
 
 // محور حضري تقريبي؛ الإزاحة تُبقي مباني المشهد خارج ساحة اللعب.
-const roadZ = x => -351 - x * .27 + 24 * Math.sin(x / 330);
+
 // نموذج نخلة واحد للرصف بطول الطريق.
 function roadsidePalms(capacity) {
   const trunk = new THREE.CylinderGeometry(.27,.46,6.8,6).toNonIndexed(); trunk.translate(0,3.3,0); trunk.deleteAttribute('uv');
@@ -112,12 +120,13 @@ function avenueTraffic(capacity) {
   };
   panel(4.6,.85,2,0,.63,0,0xe5e4da); panel(2.35,.72,1.65,-.18,1.4,0,0x788e99);
   panel(3.5,.35,1.9,0,.25,0,0x393c3e);
+
   const geo=mergeGeometries(parts,false); parts.forEach(g=>g.dispose());
   const cars=new THREE.InstancedMesh(geo,new THREE.MeshLambertMaterial({vertexColors:true}),capacity);
   const pose=new THREE.Object3D(), lanes=[];
   for(let i=0;i<capacity;i++){
-    const sign=i%2===0?1:-1, lane=Math.floor(i/2)%3;
-    lanes.push({sign,offset:sign*(4.2+lane*4.2),speed:sign*(13+lane*3),start:((i*.61803398875)%1)*1500});
+    const sign=i%2===0?1:-1, lane=Math.floor(i/2)%3, slot=Math.floor(i/6);
+    lanes.push({sign,offset:sign*(4.2+lane*4.2),speed:sign*(13+lane*3),start:(Math.floor(slot/2)*384 + (slot%2)*24 + lane*173 + (sign+1)*111)%1500});
     cars.setColorAt(i,new THREE.Color([0xfcf8ed,0xbfcdd1,0x86949b,0xe8d7b4,0x9f6460][i%5]));
   }
   // حدود ثابتة للطريق كله حتى تدخل السيارات وتخرج من مجال الرؤية.
@@ -127,9 +136,11 @@ function avenueTraffic(capacity) {
   cars.onBeforeRender=()=>{
     const t=Math.floor(performance.now()/80)*.08; if(last===t)return; last=t;
     for(let i=0;i<cars.count;i++){
-      const l=lanes[i], x=M.euclideanModulo(l.start+t*l.speed,1500)-750, z=roadZ(x)+l.offset;
-      pose.position.set(x,heightAt(x,z)+1.15,z);
-      pose.rotation.y=-Math.atan2(roadZ(x+1)-roadZ(x),1)+(l.sign<0?Math.PI:0);
+      const l=lanes[i], travel=t*l.speed, spacing=4*Math.sin(travel*.006+i);
+      const x=M.euclideanModulo(l.start+travel+spacing,1500)-750, z=roadZ(x)+l.offset;
+      const tangent=-.27+(24/330)*Math.cos(x/330);
+      pose.position.set(x,roadGrade(x)+1.15,z);
+      pose.rotation.set(0,-Math.atan(tangent)+(l.sign<0?Math.PI:0),l.sign*Math.atan((roadGrade(x+2)-roadGrade(x-2))/(4*Math.hypot(1,tangent))),'YXZ');
       pose.updateMatrix(); cars.setMatrixAt(i,pose.matrix);
     }
     cars.instanceMatrix.needsUpdate=true;
@@ -151,9 +162,25 @@ function avenueGeometry(low) {
     face([l,y,b],[l,y,f],[l,t,f],[l,t,b],color,lit);
     face([r,y,f],[r,y,b],[r,t,b],[r,t,f],color,lit);
     face([l,t,f],[r,t,f],[r,t,b],[l,t,b],color,lit);
+    if(h>6 && w>4){
+      const start=positions.length-90;
+      for(let k=start;k<positions.length;k+=3) if(positions[k+1]===y) {
+        colors[k]*=.65; colors[k+1]*=.65; colors[k+2]*=.65;
+      }
+    }
+  };
+  // تدرّج ثابت على الأرض حول الأساس، ضمن نفس دفعة رسم الشارع.
+  const footing = (x,z,w,d,base,edge,lift,paving) => {
+    const corners=[[-1,1],[1,1],[1,-1],[-1,-1]];
+    const corner=(i,pad)=>{const [a,b]=corners[i],px=x+a*(w/2+pad),pz=z+b*(d/2+pad);return [px,paving(px,pz)+lift,pz];};
+    for(let i=0;i<4;i++){
+      const j=(i+1)%4, start=colors.length;
+      face(corner(i,2.4),corner(j,2.4),corner(j,0),corner(i,0),base);
+      tint.set(edge); for(const v of [0,1,3]) tint.toArray(colors,start+3*v);
+    }
   };
   const point = (x,offset,above) => {
-    const z=roadZ(x)+offset; return [x,heightAt(x,z)+above,z];
+    const z=roadZ(x)+offset; return [x,(Math.abs(offset)<=29 ? roadGrade(x) : heightAt(x,z))+above,z];
   };
   const strip = (x,end,from,to,above,color) => face(point(x,to,above),point(end,to,above),point(end,from,above),point(x,from,above),color);
   // ثلاث حارات في كل اتجاه، فاصل وسطي، أرصفة وطريقا خدمة.
@@ -201,11 +228,13 @@ function avenueGeometry(low) {
     }
     if(u%10===0)deck(-.18,.18,.06,0xe3d8b7);
   }
+  for(const sign of [-1,1]) strip(bridgeX-4.7,bridgeX+4.7,sign<0?-15:2,sign<0?-2:15,1.23,0x383f44);
   for(const u of [-16,16]) block(bridgeX,heightAt(bridgeX,bridgeZ+u),bridgeZ+u,7,8,1.5,0xaaa18c);
   // مكاتب متوسطة الارتفاع في صفوف متباعدة، بأدوار زجاجية ومحلات عند مستوى الشارع.
   for(let i=0;i<52;i++){
     const rear=i%2===1, n=Math.floor(i/2), x=-760+n*61+(rear?26:0), z=roadZ(x)-(rear?148:86)-(i%4)*5;
     const w=24+(i*7%17),d=15+(i*3%11),h=(rear?17:8)+(i*11%17), y=heightAt(x,z)-1.5;
+    if(!low) footing(x,z,w+9,d+8,0x79756a,0xb9ac95,.43,heightAt);
     block(x,y,z,w+9,2.15,d+8,0xc9bba3);
     block(x,y,z,w,h,d,[0xc3b49d,0xa7b4b5,0xcfbfa5,0xa5a7a2][i%4]);
     block(x,y+h,z,w+1,.8,d+1,0xdcd0b9);
@@ -227,15 +256,30 @@ function avenueGeometry(low) {
 
 
 // أفق الرياض، مجسمات زخرفية بتوزيع خيالي خارج الساحات.
-function skylineGeometry(bands) {
+function skylineGeometry(bands,low) {
   const parts = [], tone = new THREE.Color();
   let ox = 0, oy = 0, oz = 0;
-  const site = (x,z) => { ox=x; oz=z; oy=heightAt(x,z)-1; };
-  const add = (source, color, x=0, y=0, z=0, lit=0) => {
+  const site = (x,z,w,d) => {
+    ox=x; oz=z; oy=heightAt(x,z)-1; if(low)return;
+    // ظل تلامس مخبوز فوق ساحة البرج، يتلاشى إلى لون الرصف عند الحافة.
+    const ring=[[-1,1],[1,1],[1,-1],[-1,-1]], pts=[], shade=[];
+    for(let i=0;i<4;i++) for(const [corner,pad] of [[i,3],[(i+1)%4,3],[(i+1)%4,0],[i,3],[(i+1)%4,0],[i,0]]){
+      const px=ring[corner][0]*(w/2+pad), pz=ring[corner][1]*(d/2+pad);
+      pts.push(px,heightAt(x+px,z+pz)-oy+.42,pz); tone.set(pad ? 0xb9ac95 : 0x766f64).toArray(shade,shade.length);
+    }
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pts,3)); g.computeVertexNormals();
+    add(g,0xffffff); g.setAttribute('color',new THREE.Float32BufferAttribute(shade,3));
+  };
+  const add = (source, color, x=0, y=0, z=0, lit=0, glazing=0) => {
     const g = source.index ? source.toNonIndexed() : source;
     g.deleteAttribute('uv'); g.translate(ox+x, oy+y, oz+z);
     const colors = new Float32Array(g.attributes.position.count*3); tone.set(color);
-    for (let i=0; i<colors.length; i+=3) tone.toArray(colors,i);
+    const position=g.attributes.position;
+    for(let i=0;i<position.count;i++){
+      const h=position.getY(i)-oy, foot=.64+.36*M.smoothstep(h,0,9);
+      colors[3*i]=tone.r*foot; colors[3*i+1]=tone.g*foot; colors[3*i+2]=tone.b*foot;
+    }
+    g.setAttribute('glazing',new THREE.BufferAttribute(new Float32Array(colors.length/3).fill(glazing),1));
     g.setAttribute('color',new THREE.BufferAttribute(colors,3)); g.setAttribute('nightGlow',new THREE.BufferAttribute(new Float32Array(colors.length/3).fill(lit),1)); parts.push(g);
   };
   const box = (w,h,d,color,x,y,z,lit=0) => add(new THREE.BoxGeometry(w,h,d),color,x,y,z,lit);
@@ -247,22 +291,22 @@ function skylineGeometry(bands) {
     const pos=[];
     for(let j=0;j<4;j++){ const k=(j+1)%4; pos.push(...lo[j],...lo[k],...hi[k],...lo[j],...hi[k],...hi[j]); }
     pos.push(...hi[0],...hi[1],...hi[2],...hi[0],...hi[2],...hi[3]);
-    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.computeVertexNormals(); add(g,color);
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.computeVertexNormals(); add(g,color,0,0,0,0,1);
   };
 
   // المملكة: فتحة حقيقية من خلال التاج وجسر فوقها.
-  site(-100,roadZ(-100)-54);
+  site(-100,roadZ(-100)-54,53,25);
   const crown = new THREE.Shape();
   crown.moveTo(-17,0); crown.lineTo(17,0); crown.lineTo(16,115); crown.lineTo(13,115);
   crown.bezierCurveTo(11,91,6,84,0,82); crown.bezierCurveTo(-6,84,-11,91,-13,115);
   crown.lineTo(-16,115); crown.closePath();
-  add(new THREE.ExtrudeGeometry(crown,{depth:13,bevelEnabled:false,curveSegments:8}),0x95bbcd,0,0,-6.5);
+  add(new THREE.ExtrudeGeometry(crown,{depth:13,bevelEnabled:false,curveSegments:8}),0x95bbcd,0,0,-6.5,0,1);
   box(31,3,9,0xbcddec,0,114,0,1.6);
   box(53,5,25,0xc4b4a0,0,2,0); box(45,2.6,20,0x80959b,0,5.7,0);
   for(let i=1;i<=bands;i++) box(33-i*.12,.6,13.4,0x7495a8,0,78*i/(bands+1),0,i%3===0?.6:0);
 
   // مجدول: نفس المسقط يدور تدريجياً حتى السطح.
-  site(-8,roadZ(-8)-64);
+  site(-8,roadZ(-8)-64,20,18);
   for(let i=0;i<bands;i++){
     const t=i/bands, next=(i+1)/bands, section=u=>ring(10,9,92*u,u*2.18);
     shell(section(t),section(next-.09/bands),0x7ca3b5);
@@ -270,7 +314,7 @@ function skylineGeometry(bands) {
   }
 
   // الفيصلية: هيكل مفتوح يحمل الكرة الذهبية وينتهي بسارية رفيعة.
-  site(-204,roadZ(-204)-50);
+  site(-204,roadZ(-204)-50,30,26);
   const facade=(u,rim=0)=>ring(15-10*u+rim,13-9*u+rim,72*u,.16);
   shell(facade(0),facade(1),0x90a5a7);
   for(let i=1;i<bands;i++) { const u=i/bands; shell(facade(u,.12),facade(u+.012,.12),0xdbd2bb); }
@@ -284,7 +328,7 @@ function skylineGeometry(bands) {
   cylinder(.18,.64,13,0xe0d5b5,105);
 
   // رافال: واجهة زجاجية طويلة فوق قاعدة حجرية وتاج متدرج.
-  site(284,roadZ(284)-58);
+  site(284,roadZ(284)-58,34,24);
   box(34,6,24,0xc29d75,0,3,0);
   shell(ring(12,9,5,-.12),ring(12,9,96,-.12),0x668fa3);
   shell(ring(11,8,96,-.12),ring(8,6,107,-.12,2,3),0x91acb7);
@@ -293,13 +337,13 @@ function skylineGeometry(bands) {
 
   // أبراج المالية: مجموعة واجهات مضلعة وأسقف مائلة بارتفاعات مختلفة.
   for(const [x,z,h,w,angle,color] of [[87,-474,72,13,.32,0x93aab4],[118,-454,113,15,-.28,0x729cac],[150,-493,89,12,.48,0x91b6be],[174,-452,53,11,-.1,0xb0bab4],[194,-486,68,11,.28,0x839ca7]]) {
-    site(x,z); const waist=ring(w*.85,w*.68,h*.60,angle+.18,2);
+    site(x,z,w*2,w*1.48); const waist=ring(w*.85,w*.68,h*.60,angle+.18,2);
     shell(ring(w,w*.74,0,angle),waist,color);
     shell(waist,ring(w*.64,w*.55,h,angle-.06,-2,h*.085),color);
   }
 
   // برج المياه: ساق خرسانية، خزان يتسع للأعلى وحزام علوي.
-  site(-343,roadZ(-343)-65);
+  site(-343,roadZ(-343)-65,10,10);
   cylinder(3.8,5.2,36,0xd9c8a6,18); cylinder(15,4,12,0xbb945f,42);
   cylinder(15,15,3.2,0xd8bf8f,49.6); cylinder(14.6,14.6,2.3,0x667e87,52.35);
   cylinder(9,15,2.4,0xd9c69f,54.7); cylinder(.25,.4,5,0xa6a49c,58);
@@ -470,10 +514,11 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
     }
     const low = Q.tier === 'low';
     if(low !== avenueLow) { const old=avenue.geometry; avenue.geometry=avenueGeometry(low); old.dispose(); avenueLow=low; }
+    skyline.material = low ? cityMaterial : glass;
     traffic.count = Q.traffic;
     streetPalms.count = Math.min(Q.avenuePalms,streetPalms.instanceMatrix.count);
     if (skylineBands !== Q.landmarkBands) {
-      const previous = skyline.geometry; skyline.geometry = skylineGeometry(Q.landmarkBands); previous.dispose(); skylineBands = Q.landmarkBands;
+      const previous = skyline.geometry; skyline.geometry = skylineGeometry(Q.landmarkBands,low); previous.dispose(); skylineBands = Q.landmarkBands;
     }
   };
   let skylineBands = Q.landmarkBands;
@@ -487,7 +532,16 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
   const streetPalms = roadsidePalms(desertBudget.avenuePalms); scene.add(streetPalms);
   let avenueLow = Q.tier === 'low';
   const avenue = new THREE.Mesh(avenueGeometry(avenueLow),cityMaterial); avenue.name='City avenue'; scene.add(avenue);
-  const skyline = new THREE.Mesh(skylineGeometry(skylineBands),cityMaterial);
+  const glass=cityMaterial.clone();
+  glass.onBeforeCompile=shader=>{
+    cityMaterial.onBeforeCompile(shader);
+    shader.vertexShader='attribute float glazing; varying float vGlazing;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvGlazing=glazing;');
+    shader.fragmentShader='varying float vGlazing;\n'+shader.fragmentShader
+      .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(.75,roughnessFactor,vGlazing);')
+      .replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\nmetalnessFactor*=vGlazing;');
+  };
+  glass.roughness=.33; glass.metalness=.48; glass.userData.envK=1.15;
+  const skyline = new THREE.Mesh(skylineGeometry(skylineBands,avenueLow),avenueLow ? cityMaterial : glass);
   skyline.name = 'Riyadh skyline'; scene.add(skyline);
 
   // ---------- مجسمات

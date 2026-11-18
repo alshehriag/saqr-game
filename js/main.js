@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js?v=19';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=19';
-import { buildFX } from './fx.js?v=19';
+import { buildTextures } from './tex.js?v=20';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=20';
+import { buildFX } from './fx.js?v=20';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
