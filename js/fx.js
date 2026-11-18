@@ -140,7 +140,19 @@ export function buildFX(scene, renderer, camera, T, W, Q) {
   const debrisN = 140, debris = new THREE.InstancedMesh(new THREE.TetrahedronGeometry(0.5, 0), new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.9 }), debrisN);
   debris.castShadow = true; debris.frustumCulled = false; scene.add(debris);
   const dd = [], dObj = new THREE.Object3D(); for (let i = 0; i < debrisN; i++) { dd.push({ on: false, p: new THREE.Vector3(), v: new THREE.Vector3(), r: new THREE.Vector3(), s: 1, t: 0 }); dObj.scale.setScalar(0); dObj.updateMatrix(); debris.setMatrixAt(i, dObj.matrix); }
-  let dNext = 0; const fires = [], decals = [];
+  let dNext=0, markNext=0; const fires=[], markPose=new THREE.Object3D(), markLimit=128;
+  const soot=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:T.scorch,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-4}),markLimit);
+  const rims=new THREE.InstancedMesh(new THREE.TorusGeometry(5.5,1.5,6,18),new THREE.MeshStandardMaterial({color:0x4a3a2a,roughness:1,flatShading:true}),markLimit);
+  soot.name='Ground scorch marks'; rims.name='Ground crater rims'; rims.receiveShadow=true;
+  for(const mesh of [soot,rims]){mesh.count=0;mesh.frustumCulled=false;scene.add(mesh);}
+  function markGround(pos,k){
+    const slot=markNext++%markLimit, angle=Math.random()*Math.PI*2;
+    markPose.position.copy(pos); markPose.position.y+=.16; markPose.rotation.set(-Math.PI/2,0,angle);
+    markPose.scale.set(43*k,33*k,1); markPose.updateMatrix(); soot.setMatrixAt(slot,markPose.matrix);
+    markPose.position.y=pos.y-.2; markPose.rotation.set(Math.PI/2,0,-angle);
+    markPose.scale.set(k,k*.8,k*.42); markPose.updateMatrix(); rims.setMatrixAt(slot,markPose.matrix);
+    soot.count=rims.count=Math.min(markNext,markLimit); soot.instanceMatrix.needsUpdate=rims.instanceMatrix.needsUpdate=true;
+  }
   F.flashAmt = 0; F.lastBlast = new THREE.Vector3();
 
   F.explode = (pos, k = 1, o = {}) => {
@@ -162,9 +174,9 @@ export function buildFX(scene, renderer, camera, T, W, Q) {
       // موجة صدمة على الأرض
       const rm = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xfff2dc, transparent: true, opacity: 0.7, depthWrite: false, fog: false, blending: THREE.AdditiveBlending })); rm.position.copy(pos).setY(pos.y + 0.4); scene.add(rm); rings.push({ m: rm, t: 0, k, flat: true });
       // حفرة محترقة ونار باقية
-      const dm = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: T.scorch, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 })); dm.rotation.x = -Math.PI / 2; dm.rotation.z = Math.random() * 6; dm.position.copy(pos).setY(pos.y + 0.14); dm.scale.setScalar(42 * k); scene.add(dm); decals.push(dm);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(5.5 * k, 1.5 * k, 8, 22), new THREE.MeshStandardMaterial({ color: 0x4a3a2a, roughness: 1, flatShading: true })); rim.rotation.x = Math.PI / 2; rim.scale.z = 0.45; rim.position.copy(pos).setY(pos.y - 0.2); rim.receiveShadow = true; scene.add(rim); decals.push(rim);
+      markGround(pos,k);
       const pl = firePool[firePi++ % firePool.length]; pl.position.copy(pos).setY(pos.y + 4);
+      for(const f of fires)if(f.l===pl)f.l=null;
       fires.push({ p: pos.clone(), t: 0, k, acc: 0, l: pl });
     } else {
       const sm = new THREE.Mesh(shellGeo, new THREE.MeshBasicMaterial({ color: 0xfff0e0, transparent: true, opacity: 0.35, depthWrite: false, fog: false, blending: THREE.AdditiveBlending, side: THREE.BackSide })); sm.position.copy(pos); scene.add(sm); rings.push({ m: sm, t: 0, k, flat: false });
@@ -202,15 +214,19 @@ export function buildFX(scene, renderer, camera, T, W, Q) {
     if (any) debris.instanceMatrix.needsUpdate = true;
     const L = lit();
     if (fires.length > 8) fires.splice(0, fires.length - 8);
-    fires.forEach(f => { f.t += dt; const pow = Math.max(0.25, 1 - f.t / 40); f.acc += dt * 26 * F.rate; f.l.intensity = (900 + Math.sin(time * 23) * 200 + Math.sin(time * 41) * 150) * pow * f.k;
+    for(let i=fires.length-1;i>=0;i--){
+      const f=fires[i]; f.t+=dt;
+      const pow=Math.max(0,1-f.t/22);
+      if(!pow){if(f.l)f.l.intensity=0;fires.splice(i,1);continue;}
+      f.acc+=dt*26*F.rate*pow; if(f.l)f.l.intensity = (900 + Math.sin(time * 23) * 200 + Math.sin(time * 41) * 150) * pow * f.k;
       while (f.acc >= 1) { f.acc -= 1; const x = f.p.x + (Math.random() - 0.5) * 9 * f.k, z = f.p.z + (Math.random() - 0.5) * 9 * f.k;
         fire.spawn({ x, y: f.p.y + 0.8, z, vy: 4 + Math.random() * 5, life: 0.7 + Math.random() * 0.6, s0: 3.2 * f.k, s1: 1.2, a: 0.9 * pow, rise: 5, drag: 0.5, c0: [1.8, 1.0, 0.35], c1: [1.0, 0.25, 0.04] });
-        if (Math.random() < 0.45) smoke.spawn({ x, y: f.p.y + 3, z, vy: 7 + Math.random() * 4, life: 9 + Math.random() * 6, s0: 4 * f.k, s1: 26 * f.k, a: 0.55, drag: 0.15, rise: 0.8, c0: [0.09, 0.08, 0.08], c1: [L[0] * 0.3, L[1] * 0.3, L[2] * 0.3] }); } });
+        if (Math.random() < 0.45) smoke.spawn({ x, y: f.p.y + 3, z, vy: 7 + Math.random() * 4, life: 9 + Math.random() * 6, s0: 4 * f.k, s1: 26 * f.k, a: 0.55, drag: 0.15, rise: 0.8, c0: [0.09, 0.08, 0.08], c1: [L[0] * 0.3, L[1] * 0.3, L[2] * 0.3] }); } }
     let anyT = false;
     for (let i = 0; i < tracerN; i++) { const t = tr[i]; if (!t.on) continue; anyT = true; t.t += dt; t.p.addScaledVector(t.v, dt); if (t.t > t.life) { t.on = false; dObj.scale.setScalar(0); } else { dObj.position.copy(t.p); dObj.quaternion.setFromUnitVectors(yAxis, tmp2.copy(t.v).normalize()); dObj.scale.setScalar(1); } dObj.updateMatrix(); tracers.setMatrixAt(i, dObj.matrix); dObj.rotation.set(0, 0, 0); }
     if (anyT) tracers.instanceMatrix.needsUpdate = true;
   };
-  F.reset = () => { smoke.n = fire.n = 0; firePool.forEach(l => l.intensity = 0); fires.length = 0; decals.forEach(d => scene.remove(d)); decals.length = 0; rings.forEach(r => scene.remove(r.m)); rings.length = 0; dd.forEach(d => d.on = false); for (let i = 0; i < debrisN; i++) { dObj.scale.setScalar(0); dObj.updateMatrix(); debris.setMatrixAt(i, dObj.matrix); } debris.instanceMatrix.needsUpdate = true; tr.forEach(t => t.on = false); F.beam(tmp, tmp, 0); };
+  F.reset = () => { smoke.n = fire.n = 0; firePool.forEach(l => l.intensity = 0); fires.length = 0; markNext=soot.count=rims.count=0; rings.forEach(r => { scene.remove(r.m); r.m.material.dispose(); }); rings.length = 0; dd.forEach(d => d.on = false); for (let i = 0; i < debrisN; i++) { dObj.scale.setScalar(0); dObj.updateMatrix(); debris.setMatrixAt(i, dObj.matrix); } debris.instanceMatrix.needsUpdate = true; tr.forEach(t => t.on = false); F.beam(tmp, tmp, 0); };
 
   // ---------- المعالجة اللاحقة
   const size = renderer.getDrawingBufferSize(new THREE.Vector2());

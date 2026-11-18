@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { makeNoise } from './tex.js?v=20';
+import { makeNoise } from './tex.js?v=21';
 
 const N = makeNoise(1234), M = THREE.MathUtils;
 export const HOME = new THREE.Vector3(0, 0, 0);
@@ -652,12 +652,13 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
     flat(46, 46, MT.concrete, 0, 0, 0.09); flat(120, 70, MT.concrete, -105, -30, 0.07); flat(70, 50, MT.concrete, 96, -60, 0.07);
     for (let i = -25; i <= 25; i++) flat(4, 0.3, new THREE.MeshStandardMaterial({ color: 0xd8d2b8, roughness: 0.9 }), i * 10, 60, 0.075, 1, 1);
     // حظائر
-    [[-120, -50, MT.corrA], [-120, -14, MT.corrB], [-84, 26, MT.corrA]].forEach(([x, z, m], i) => { const h = hangar(11, 34, m); h.position.set(x, 0, z); if (i === 2) h.rotation.y = Math.PI / 2; B.add(h); col(x, z, 19, 11, 'hangar'); });
+    [[-120, -50, MT.corrA], [-120, -14, MT.corrB], [-84, 26, MT.corrA]].forEach(([x, z, m], i) => { const h = hangar(11, 34, m); h.userData.damageSurface = 1; h.position.set(x, 0, z); if (i === 2) h.rotation.y = Math.PI / 2; B.add(h); col(x, z, 19, 11, 'hangar'); });
     const rd = radome(7); rd.position.set(-58, 0, -96); B.add(rd); col(-58, -96, 8, 21, 'radome');
     const tw = tower(); tw.position.set(-52, 0, 34); B.add(tw); col(-52, 34, 4, 16, 'tower');
     [[84, -70], [98, -70], [91, -56]].forEach(([x, z]) => { const t = tank(5, 8); t.position.set(x, 0, z); B.add(t); col(x, z, 5.5, 9, 'tank'); });
-    B.add(box(26, 5, 12, MT.concrete, 60, 2.5, 96)); B.add(box(27, 0.4, 13, MT.dark, 60, 5.2, 96)); col(60, 96, 14, 5, 'bldg');
-    for (let i = 0; i < 6; i++) B.add(box(1.6, 1.4, 0.1, MT.glass, 50 + i * 4, 3, 89.95));
+    const officePart = mesh => { mesh.userData.damageSurface=2; B.add(mesh); };
+    officePart(box(26, 5, 12, MT.concrete, 60, 2.5, 96)); officePart(box(27, 0.4, 13, MT.dark, 60, 5.2, 96)); col(60, 96, 14, 5, 'bldg');
+    for (let i = 0; i < 6; i++) officePart(box(1.6, 1.4, 0.1, MT.glass, 50 + i * 4, 3, 89.95));
     // مركز القيادة المحصّن (الهدف في قاعدة الخصم)
     if (enemy) {
       const bk = new THREE.Group(); bk.position.set(0, 0, 0);
@@ -723,6 +724,15 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
       flag(36, 104, 0x1f8a4c);
       [[-190, -180], [-180, -192], [188, -184], [176, 190], [190, 176], [-186, 186], [-196, 170]].forEach(([x, z]) => { const p = palm(6 + Math.random() * 4); p.position.set(x, 0, z); B.add(p); });
     }
+    const laneMat=new THREE.MeshStandardMaterial({map:T.serviceLane,roughness:1,alphaTest:.4,polygonOffset:true,polygonOffsetFactor:-12});
+    const lane=new THREE.Mesh(new THREE.PlaneGeometry(64,128),laneMat);
+    lane.rotation.x=-Math.PI/2; lane.position.set(enemy?80:-80,.12,4); if(enemy){ const uv=lane.geometry.attributes.uv; for(let i=0;i<uv.count;i++)uv.setX(i,1-uv.getX(i)); } lane.receiveShadow=true; B.add(lane);
+    const cart=new THREE.Group();
+    cart.add(box(2.8,1.15,1.55,MT.tan,0,1,0),box(1.9,.18,1.48,MT.dark,-.25,1.65,0),box(1.5,.14,.18,MT.steel,1.8,.67,0));
+    for(const x of [-.86,.86])for(const z of [-.78,.78]){
+      const wheel=cyl(.37,.37,.2,MT.dark,8); wheel.rotation.x=Math.PI/2; wheel.position.set(x,.38,z); cart.add(wheel);
+    }
+    cart.position.set(enemy?90:-90,0,-24); B.add(cart);
     return { group: B, sys };
   };
 
