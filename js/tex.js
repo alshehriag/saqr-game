@@ -60,22 +60,23 @@ export function buildTextures(q) {
   {
     const per = 8;
     const hf = (u, v) => {
-      const warp = N.fbm(u * per, v * per, 3, per) * 1.6;
-      const rip = Math.sin((u * 40 + warp * 3.0) * Math.PI * 2 + Math.sin(v * Math.PI * 2 * 5) * 0.9);
-      const ripple = Math.pow(rip * 0.5 + 0.5, 1.7);           // قمم حادة وسفوح ناعمة
+      const warp = N.fbm(u * per, v * per, 3, per);
+      const phase = u * 38 + v * 9 + warp * 1.3;
+      const rip = Math.sin(phase * Math.PI * 2);
+      const ripple = Math.pow(rip * 0.5 + 0.5, 1.35);
       const grain = N2.fbm(u * 128, v * 128, 2, 128);
       const mask = 0.35 + 0.65 * N.fbm(u * per + 9, v * per + 4, 2, per);
-      return ripple * 0.75 * mask + grain * 0.22;
+      return ripple * 0.53 * mask + grain * 0.12;
     };
-    const { c: nc, H } = normalFromHeight(S, hf, 5.0);
+    const { c: nc, H } = normalFromHeight(S, hf, 3.4);
     T.sandN = tex(nc, 1, false, 8);
     const c = canvas(S, S), g = c.getContext('2d'), img = g.createImageData(S, S), d = img.data;
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
       const u = x / S, v = y / S, h = H[y * S + x];
       const tone = N.fbm(u * 4 + 3, v * 4 + 7, 4, 4), sp = N2.n2(u * 256, v * 256, 256);
-      const k = 0.80 + h * 0.2 + (tone - 0.5) * 0.24 + (sp - 0.5) * 0.10;
+      const k = 0.87 + h * 0.095 + (tone - 0.5) * 0.17 + (sp - 0.5) * 0.075;
       const i = (y * S + x) * 4;
-      d[i] = Math.min(255, 213 * k); d[i + 1] = Math.min(255, 176 * k); d[i + 2] = Math.min(255, 128 * k * (0.94 + tone * 0.1)); d[i + 3] = 255;
+      d[i] = Math.min(255, 208 * k); d[i + 1] = Math.min(255, 173 * k); d[i + 2] = Math.min(255, 127 * k * (0.94 + tone * 0.1)); d[i + 3] = 255;
     }
     g.putImageData(img, 0, 0);
     T.sand = tex(c, 1, true, 8);
