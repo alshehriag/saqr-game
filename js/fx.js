@@ -134,7 +134,7 @@ export function buildFX(scene, renderer, camera, T, W, Q) {
 
   // ---------- انفجارات
   const firePool = []; let firePi = 0; for (let i = 0; i < 4; i++) { const l = new THREE.PointLight(0xff7a30, 0, 140, 1.7); scene.add(l); firePool.push(l); }
-  const flashes = []; for (let i = 0; i < 3; i++) { const l = new THREE.PointLight(0xffb060, 0, 900, 1.3); scene.add(l); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.glow, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, opacity: 0 })); s.renderOrder = 14; scene.add(s); flashes.push({ l, s, t: 9, k: 1 }); }
+  const flashes = []; for (let i = 0; i < 3; i++) { const l = new THREE.PointLight(0xffb060, 0, 900, 1.3); scene.add(l); const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.glow, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, opacity: 0, color: new THREE.Color(1, 0.75, 0.46).multiplyScalar(6) })); s.renderOrder = 14; scene.add(s); flashes.push({ l, s, t: 9, k: 1 }); }
   const rings = [], ringGeo = new THREE.RingGeometry(0.86, 1, 64); ringGeo.rotateX(-Math.PI / 2);
   const shellGeo = new THREE.SphereGeometry(1, 24, 16);
   const debrisN = 140, debris = new THREE.InstancedMesh(new THREE.TetrahedronGeometry(0.5, 0), new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.9 }), debrisN);
@@ -217,7 +217,7 @@ export function buildFX(scene, renderer, camera, T, W, Q) {
   const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: Q.msaa });
   const composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.55, 0.7, 1.0); composer.addPass(bloom);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.28, 0.38, 2.5); composer.addPass(bloom);
   const fin = new ShaderPass({
     uniforms: { tDiffuse: { value: null }, uT: { value: 0 }, uAsp: { value: 1 }, uBlur: { value: 0 }, uHeat: { value: new THREE.Vector3(0.5, 0.5, 0) }, uSun: { value: new THREE.Vector3(0.5, 0.5, 0) }, uSunC: { value: new THREE.Color(1, 0.9, 0.7) },
       uNV: { value: 0 }, uFocus: { value: new THREE.Vector3(0.5, 0.5, 0) }, uFlash: { value: 0 }, uTint: { value: new THREE.Vector3(1, 1, 1) }, uSat: { value: 1.08 }, uLetter: { value: 0 } },
@@ -259,7 +259,7 @@ export function buildFX(scene, renderer, camera, T, W, Q) {
   F.post = { blur: 0, heat: 0, heatPos: new THREE.Vector3(), focus: 0, focusPos: new THREE.Vector3(), nv: false };
   F.resize = (w, h, pr) => { composer.setPixelRatio(pr); composer.setSize(w, h); U.uAsp.value = w / h; };
   F.render = (time) => {
-    bloom.enabled = Q.bloom; bloom.strength = W.preset.night ? 0.9 : (W.time === 'sunset' ? 0.2 : 0.36); bloom.threshold = W.preset.night ? 0.9 : 3.2; bloom.radius = 0.6;
+    bloom.enabled = Q.post && Q.bloom; bloom.strength = W.preset.night ? 0.42 : 0.28;
     U.uT.value = time; U.uBlur.value = Q.blur ? F.post.blur : 0; U.uFlash.value = F.flashAmt * F.flashAmt; U.uNV.value = F.post.nv ? 1 : 0;
     const proj = (p, out, amt) => { v3.copy(p).project(camera); const ok = v3.z < 1 && Math.abs(v3.x) < 1.6 && Math.abs(v3.y) < 1.6; out.set(v3.x * 0.5 + 0.5, v3.y * 0.5 + 0.5, ok ? amt : 0); };
     proj(F.post.heatPos, U.uHeat.value, Q.heat ? F.post.heat : 0);

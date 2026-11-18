@@ -1,7 +1,8 @@
 // العالم: السماء، التضاريس، القواعد، المجسمات
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { makeNoise } from './tex.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { makeNoise } from './tex.js?v=17';
 
 const N = makeNoise(1234), M = THREE.MathUtils;
 export const HOME = new THREE.Vector3(0, 0, 0);
@@ -11,27 +12,28 @@ const FLAT_R = 300;
 // ---------- ارتفاع الأرض: كثبان غير متناظرة (سفح ريح لطيف + وجه انزلاق حاد)
 function duneProfile(t) { t -= Math.floor(t); return t < 0.7 ? M.smootherstep(t / 0.7, 0, 1) : M.smootherstep((1 - t) / 0.3, 0, 1); }
 export function heightAt(x, z) {
-  const big = N.fbm(x / 2600 + 40, z / 2600 + 40, 3) - 0.5;
-  const w1 = N.fbm(x / 1300 + 11, z / 1300 + 3, 3) * 4.2;
-  const a1 = 0.2 + N.fbm(x / 1700 + 70, z / 1700 + 20, 2);
-  const d1 = duneProfile((x * 0.42 + z * 0.91) / 760 + w1) * 46 * a1 * a1;
-  const w2 = N.fbm(x / 520 + 5, z / 520 + 9, 3) * 3.4;
-  const m2 = M.smoothstep(N.fbm(x / 800 + 31, z / 800 + 17, 2), 0.38, 0.7);
-  const d2 = duneProfile((x * 0.72 + z * 0.69) / 250 + w2) * 9 * m2;
-  let h = big * 110 + d1 + d2 + (N.fbm(x / 90, z / 90, 2) - 0.5) * 2.2;
+  const big = N.fbm(x / 2700 + 40, z / 2700 + 40, 3) - 0.5;
+  const warp = N.fbm(x / 1500 + 11, z / 1500 + 3, 2) * 2.2;
+  const a = 0.28 + N.fbm(x / 1800 + 70, z / 1800 + 20, 2);
+  const d = duneProfile((x * 0.54 + z * 0.84) / 920 + warp) * 56 * a * a;
+  const apron = duneProfile((x * 0.79 + z * 0.61) / 490 + warp) * 7 * a;
+  const h = big * 86 + d + apron;
   const f = Math.min(
     M.smoothstep(Math.hypot(x - HOME.x, z - HOME.z), FLAT_R, FLAT_R + 420),
     M.smoothstep(Math.hypot(x - ENEMY.x, z - ENEMY.z), FLAT_R, FLAT_R + 420));
-  return h * f;
+  const yard = origin => M.smoothstep(Math.max(Math.abs(x - origin.x), Math.abs(z - origin.z)), 234, 315);
+  return h * Math.min(f, yard(HOME), yard(ENEMY));
 }
 
 export const TIMES = {
-  day:    { elev: 36, az: 232, sunI: 5.2, sunC: 0xfff1dc, hemi: [0xbcd3ee, 0x9a7a52, 1.25], fog: 0xb9a78c, fogD: 0.000105, exp: 0.3, turb: 3.2, ray: 1.1, mie: 0.004, mieG: 0.82, env: 1.0 },
-  sunset: { elev: 4.5, az: 196, sunI: 4.6, sunC: 0xffa65e, hemi: [0x9aa2c4, 0x8a5a38, 0.9], fog: 0xb07a55, fogD: 0.00013, exp: 0.3, turb: 8, ray: 2.6, mie: 0.006, mieG: 0.86, env: 0.9 },
-  night:  { elev: 42, az: 215, sunI: 0.5, sunC: 0x9fb6e8, hemi: [0x27324e, 0x15120f, 0.7], fog: 0x0b0f18, fogD: 0.00012, exp: 0.62, turb: 2, ray: 0.4, mie: 0.002, mieG: 0.8, env: 0.14, night: true },
+  day:    { elev: 36, az: 232, sunI: 5.2, sunC: 0xffebcf, hemi: [0xbcd3ee, 0x9a7a52, 1.25], fog: 0xc7ab8a, fogD: 0.000116, exp: 0.3, turb: 4.2, ray: 1.35, mie: 0.005, mieG: 0.82, env: 1.0 },
+  sunset: { elev: 4.5, az: 196, sunI: 4.4, sunC: 0xffb47d, hemi: [0xb1b2cf, 0xa17153, 1.2], fog: 0xb98568, fogD: 0.000142, exp: 0.36, turb: 6.4, ray: 2.3, mie: 0.005, mieG: 0.86, env: 0.9 },
+  night:  { elev: 42, az: 215, sunI: 0.85, sunC: 0xb4c8ec, hemi: [0x536d9b, 0x514045, 1.05], fog: 0x171c2b, fogD: 0.00013, exp: 0.76, turb: 2.6, ray: 0.5, mie: 0.002, mieG: 0.8, env: 0.14, night: true },
 };
 
-export function buildWorld(scene, renderer, T, Q) {
+export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
+  let seed = 1847;
+  const rand = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
   const W = { colliders: [], dyn: [], lights: [] };
 
   // ---------- السماء والشمس
@@ -43,6 +45,11 @@ export function buildWorld(scene, renderer, T, Q) {
   scene.add(sun, sun.target);
   const hemi = new THREE.HemisphereLight(0xffffff, 0x886644, 0.6); scene.add(hemi);
   scene.fog = new THREE.FogExp2(0xccb090, 0.00012);
+  const skyHaze = { value: new THREE.Color() }, skyHazeStrength = { value: 0.48 };
+  sky.material.uniforms.horizonHaze = skyHaze; sky.material.uniforms.horizonHazeStrength = skyHazeStrength;
+  sky.material.fragmentShader = sky.material.fragmentShader
+    .replace('void main()', 'uniform vec3 horizonHaze; uniform float horizonHazeStrength;\nvoid main()')
+    .replace('#include <tonemapping_fragment>', 'gl_FragColor.rgb = mix(gl_FragColor.rgb, horizonHaze, horizonHazeStrength * (1.0 - smoothstep(0.01, 0.24, direction.y)));\n#include <tonemapping_fragment>');
   const pmrem = new THREE.PMREMGenerator(renderer);
   const sunDir = new THREE.Vector3();
   let envRT = null;
@@ -65,11 +72,12 @@ export function buildWorld(scene, renderer, T, Q) {
     sun.color.set(p.sunC); sun.intensity = p.sunI;
     hemi.color.set(p.hemi[0]); hemi.groundColor.set(p.hemi[1]); hemi.intensity = p.hemi[2];
     scene.fog.color.set(p.fog); scene.fog.density = p.fogD;
+    skyHaze.value.copy(scene.fog.color); skyHazeStrength.value = p.night ? 0.8 : 0.53;
     renderer.toneMappingExposure = p.exp;
     stars.visible = !!p.night;
     // خريطة بيئة من السماء لانعكاسات المعدن
     const es = new THREE.Scene(), s2 = new Sky(); s2.scale.setScalar(1000);
-    Object.keys(u).forEach(k => { const v = u[k].value; s2.material.uniforms[k].value = v && v.clone ? v.clone() : v; });
+    Object.keys(s2.material.uniforms).forEach(k => { const v = u[k].value; s2.material.uniforms[k].value = v && v.clone ? v.clone() : v; });
     es.add(s2);
     if (envRT) envRT.dispose();
     envRT = pmrem.fromScene(es, 0, 1, 2000); scene.environment = envRT.texture;
@@ -99,7 +107,7 @@ export function buildWorld(scene, renderer, T, Q) {
     trunk: mat({ color: 0x6b5438, normalMap: T.trunkN, roughness: 1 }),
     frond: mat({ map: T.frond, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.8 }),
     fence: mat({ map: T.fence, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.6 }),
-    lamp: new THREE.MeshBasicMaterial({ color: 0xffe2a8 }),
+    lamp: new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffe2a8).multiplyScalar(4) }),
   };
   MT.glass.userData.envK = 1.6; MT.steel.userData.envK = 1.2;
   const corr = (col) => { const m = mat({ color: col, map: T.corr.clone(), normalMap: T.corrN.clone(), roughness: 0.6, metalness: 0.55, side: THREE.DoubleSide }); m.map.rotation = m.normalMap.rotation = Math.PI / 2; m.map.repeat.set(6, 2); m.normalMap.repeat.set(6, 2); return m; };
@@ -110,22 +118,51 @@ export function buildWorld(scene, renderer, T, Q) {
   const tiled = (m, rx, ry) => { const c = m.clone(); ['map', 'normalMap'].forEach(k => { if (c[k]) { c[k] = c[k].clone(); c[k].repeat.set(rx, ry); } }); return c; };
 
   // ---------- التضاريس
-  {
-    const size = 15000, seg = Q.terrainSeg, g = new THREE.PlaneGeometry(size, size, seg, seg);
-    g.rotateX(-Math.PI / 2); g.translate(ENEMY.x / 2, 0, ENEMY.z / 2);
-    const p = g.attributes.position, col = new Float32Array(p.count * 3);
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i), z = p.getZ(i), h = heightAt(x, z); p.setY(i, h);
-      const v = 0.86 + (N.fbm(x / 700, z / 700, 3) - 0.5) * 0.36 + M.clamp(h / 90, -0.2, 0.3) * 0.25;
-      const warm = N.fbm(x / 1900 + 8, z / 1900, 2);
-      col[i * 3] = v * (1.0 + warm * 0.06); col[i * 3 + 1] = v * (0.97); col[i * 3 + 2] = v * (0.93 - warm * 0.1);
+  const size = 15000, cx = ENEMY.x / 2, cz = ENEMY.z / 2;
+  const sand = mat({ map: T.sand.clone(), normalMap: T.sandN.clone(), roughness: 1, metalness: 0, vertexColors: true });
+  sand.map.repeat.setScalar(size / 14); sand.normalMap.repeat.setScalar(size / 14);
+  sand.normalScale.setScalar(0.24); sand.userData.envK = 0.32;
+  sand.onBeforeCompile = shader => {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <tonemapping_fragment>',
+      'gl_FragColor.rgb *= min(1.0, 2.35 / max(dot(gl_FragColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.001));\n#include <tonemapping_fragment>');
+  };
+  const desertMeshes = new Map();
+  // نقاط أكثر حول القاعدتين وبينهما؛ شبكة واحدة بلا شقوق عند الانتقال.
+  const axis = (cuts, seg) => {
+    const values = [cuts[0][0]];
+    for (let i = 1; i < cuts.length; i++) {
+      const n = Math.max(1, Math.round(seg * cuts[i][1]));
+      for (let j = 1; j <= n; j++) values.push(M.lerp(cuts[i - 1][0], cuts[i][0], j / n));
+    }
+    return values;
+  };
+  const makeTerrain = seg => {
+    const xs = axis([[cx - size / 2], [-950, .12], [-234, .20], [494, .36], [1210, .20], [cx + size / 2, .12]], seg);
+    const zs = axis([[cz - size / 2], [-6450, .065], [ENEMY.z - 234, .115], [ENEMY.z + 234, .115], [-234, .39], [234, .115], [1100, .125], [cz + size / 2, .075]], seg);
+    const nx = xs.length, nz = zs.length, g = new THREE.PlaneGeometry(1, 1, nx - 1, nz - 1);
+    const p = g.attributes.position, uv = g.attributes.uv, col = new Float32Array(p.count * 3);
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+      const k = j * nx + i, x = xs[i], z = zs[j], h = heightAt(x, z);
+      p.setXYZ(k, x, h, z); uv.setXY(k, (x - cx) / size + 0.5, 0.5 - (z - cz) / size);
+      const v = 0.89 + (N.fbm(x / 890, z / 890, 3) - 0.5) * 0.27 + M.clamp(h / 100, -0.24, 0.3) * 0.15;
+      const warm = N.fbm(x / 1650 + 8, z / 1650, 2);
+      col[k * 3] = v * (1 + warm * 0.045); col[k * 3 + 1] = v * 0.98; col[k * 3 + 2] = v * (0.96 - warm * 0.1);
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
-    const m = mat({ map: T.sand, normalMap: T.sandN, roughness: 0.94, metalness: 0, vertexColors: true });
-    m.map.repeat.set(size / 9, size / 9); m.normalMap.repeat.set(size / 9, size / 9);
-    m.normalScale.set(0.55, 0.55); m.userData.envK = 0.5;
-    const t = new THREE.Mesh(g, m); t.receiveShadow = true; scene.add(t); W.terrain = t;
-  }
+    // نفس مثلثات الشبكة لتثبيت العناصر الصغيرة حتى عند تغيير الجودة.
+    const cell = (values, x) => {
+      let lo = 0, hi = values.length - 1;
+      while (hi - lo > 1) { const mid = (hi + lo) >> 1; if (x < values[mid]) hi = mid; else lo = mid; }
+      return lo;
+    };
+    const surface = (x, z) => {
+      const i = cell(xs, x), j = cell(zs, z), k = j * nx + i;
+      const u = (x - xs[i]) / (xs[i + 1] - xs[i]), v = (z - zs[j]) / (zs[j + 1] - zs[j]);
+      const a = p.getY(k), b = p.getY(k + nx), c = p.getY(k + 1), d = p.getY(k + nx + 1);
+      return u + v <= 1 ? a + (b - a) * v + (c - a) * u : d + (b - d) * (1 - u) + (c - d) * (1 - v);
+    };
+    return { g, surface };
+  };
   { // أرض ممتدة حتى الأفق تحت حافة التضاريس
     const d = new THREE.Mesh(new THREE.CircleGeometry(45000, 48), mat({ color: 0xb89a70, roughness: 1 })); d.rotation.x = -Math.PI / 2; d.position.set(ENEMY.x / 2, -70, ENEMY.z / 2); scene.add(d);
   }
@@ -141,18 +178,60 @@ export function buildWorld(scene, renderer, T, Q) {
     const m = new THREE.Mesh(g, mat({ color: 0x8a7558, roughness: 1, side: THREE.BackSide, flatShading: true }));
     m.position.set(ENEMY.x / 2, 0, ENEMY.z / 2); scene.add(m);
   }
-  // صخور مبعثرة
-  {
-    const g = new THREE.DodecahedronGeometry(1, 1), p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) { const k = 0.7 + N.n2(p.getX(i) * 3 + 5, p.getY(i) * 3 + p.getZ(i) * 2) * 0.6; p.setXYZ(i, p.getX(i) * k, p.getY(i) * k * 0.7, p.getZ(i) * k); }
-    g.computeVertexNormals();
-    const n = Q.rocks, im = new THREE.InstancedMesh(g, MT.rock, n), d = new THREE.Object3D();
-    for (let i = 0; i < n; i++) {
-      const x = (Math.random() - 0.5) * 2400 + ENEMY.x / 2, z = -Math.random() * 6200 + 500, s = 0.6 + Math.pow(Math.random(), 3) * 7;
-      d.position.set(x, heightAt(x, z) - s * 0.15, z); d.rotation.set(Math.random() * 3, Math.random() * 6, 0); d.scale.set(s, s * 0.8, s); d.updateMatrix(); im.setMatrixAt(i, d.matrix);
-    }
-    im.castShadow = im.receiveShadow = true; scene.add(im);
+  const firstTerrain = makeTerrain(Q.terrainSeg);
+  const terrain = W.terrain = new THREE.Mesh(firstTerrain.g, sand); terrain.receiveShadow = true; scene.add(terrain);
+  desertMeshes.set(Q.terrainSeg, firstTerrain);
+  // صخور وشجيرات متناثرة خارج الساحات والطرق؛ دون ظلال إضافية.
+  const rockGeo = new THREE.DodecahedronGeometry(1, 0), rp = rockGeo.attributes.position;
+  for (let i = 0; i < rp.count; i++) {
+    const x = rp.getX(i), y = rp.getY(i), z = rp.getZ(i), k = 0.78 + N.n2(x * 3 + 5, y * 3 + z * 2) * 0.43;
+    rp.setXYZ(i, x * k, y * k * 0.65, z * k);
   }
+  rockGeo.computeVertexNormals();
+  const shrubGeo = new THREE.IcosahedronGeometry(1, 0);
+  const scatter = [
+    { key: 'rocks', g: rockGeo, mat: MT.rock, tint: new THREE.Color(0xa88c70), points: [] },
+    { key: 'shrubs', g: shrubGeo, mat: mat({ color: 0x8e8960, roughness: 1, flatShading: true }), tint: new THREE.Color(0xb8ae86), points: [] },
+  ];
+  const dummy = new THREE.Object3D(), tint = new THREE.Color(), white = new THREE.Color(0xffffff), dmat = new THREE.Matrix4();
+  for (const layer of scatter) {
+    const shrub = layer.key === 'shrubs', pieces = shrub ? 3 : 1, total = desertBudget[layer.key] ?? 0;
+    layer.pieces = pieces; layer.mesh = new THREE.InstancedMesh(layer.g, layer.mat, total * pieces);
+    for (let attempts = 0; layer.points.length < total && attempts < total * 12; attempts++) {
+      const base = rand() < 0.5 ? HOME : ENEMY, a = rand() * Math.PI * 2, r = 340 + rand() * 440;
+      const near = rand() < 0.45, x = near ? base.x + Math.cos(a) * r : cx + (rand() - 0.5) * 3300;
+      const z = near ? base.z + Math.sin(a) * r : ENEMY.z - 720 + rand() * 6640;
+      if ([HOME, ENEMY].some(o => Math.abs(x - o.x) < 310 && Math.abs(z - o.z) < 290)) continue;
+      if (rand() > 0.24 + N.fbm(x / 350 + 24, z / 350 + 7, 2) * 0.95) continue;
+      const s = shrub ? 0.8 + rand() * 2.6 : 0.75 + rand() ** 2 * 3.5, turn = rand() * Math.PI * 2;
+      const parts = [];
+      for (let i = 0; i < pieces; i++) {
+        const angle = turn + i * 2.39996, k = shrub ? s * (0.48 + rand() * 0.36) : s;
+        dummy.position.set(x + (shrub ? Math.cos(angle) * s * 0.38 : 0), shrub ? k * 0.25 : -k * 0.09, z + (shrub ? Math.sin(angle) * s * 0.38 : 0));
+        dummy.rotation.set(shrub ? 0.26 : rand() * 0.4, angle, 0);
+        dummy.scale.set(k, k * (shrub ? 0.56 + rand() * 0.4 : 0.76), k * 0.76); dummy.updateMatrix(); parts.push(dummy.matrix.clone());
+        layer.mesh.setColorAt((layer.points.length * pieces) + i, tint.copy(layer.tint).lerp(white, rand() * 0.7));
+      }
+      layer.points.push(parts);
+    }
+    scene.add(layer.mesh);
+  }
+  W.setDesertQuality = () => {
+    if (!desertMeshes.has(Q.terrainSeg)) desertMeshes.set(Q.terrainSeg, makeTerrain(Q.terrainSeg));
+    const { g, surface } = desertMeshes.get(Q.terrainSeg);
+    terrain.geometry = g;
+    for (const t of [sand.map, sand.normalMap]) if (t.anisotropy !== Q.sandAniso) { t.anisotropy = Q.sandAniso; t.needsUpdate = true; }
+    for (const layer of scatter) {
+      const count = Math.min(layer.points.length, Q[layer.key] ?? 0);
+      layer.mesh.count = count * layer.pieces;
+      for (let i = 0; i < count; i++) layer.points[i].forEach((m, j) => {
+        dmat.copy(m); const e = dmat.elements; e[13] += surface(e[12], e[14]); layer.mesh.setMatrixAt(i * layer.pieces + j, dmat);
+      });
+      layer.mesh.instanceMatrix.needsUpdate = true; layer.mesh.computeBoundingSphere();
+    }
+    if (W.ridge && W.ridge.geometry !== ridgeGeometries[Q.ridgeDetail]) { W.ridge.geometry = ridgeGeometries[Q.ridgeDetail]; W.ridge.computeBoundingSphere(); }
+  };
+  const ridgeGeometries = {};
 
   // ---------- مجسمات
   const wheel = () => { const g = new THREE.Group(), t = cyl(0.72, 0.72, 0.5, MT.rubber, 22), h = cyl(0.36, 0.36, 0.54, MT.steel, 12); t.rotation.z = h.rotation.z = Math.PI / 2; g.add(t, h); return g; };
@@ -322,7 +401,28 @@ export function buildWorld(scene, renderer, T, Q) {
       for (const sx of [103, 137]) { const r = box(3, 5, 82, bermM, sx, 2.5, -32); B.add(r); } B.add(box(37, 5, 3, bermM, 120, 2.5, -74));
       const rk = MT.rock || (MT.rock = mat({ color: 0x75685a, map: T.sand, roughness: 1, metalness: 0 }));
       { const n = 54, im = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), rk, n), d = new THREE.Object3D(); for (let i = 0; i < n; i++) { const a = Math.PI * (0.94 + (i / n) * 1.12) + Math.random() * 0.1, r = 262 + Math.random() * 120, s = 4 + Math.random() * 11; d.position.set(Math.cos(a) * r, s * 0.25, Math.sin(a) * r * 0.95 - 20); d.scale.set(s, s * (0.5 + Math.random() * 0.5), s * (0.7 + Math.random() * 0.6)); d.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3); d.updateMatrix(); im.setMatrixAt(i, d.matrix); } im.castShadow = im.receiveShadow = true; B.add(im); }
-      { const n = 9, im = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 7), rk, n), d = new THREE.Object3D(); for (let i = 0; i < n; i++) { const hgt = 60 + Math.random() * 80, wd = 110 + Math.random() * 90; d.position.set(-520 + i * 130 + Math.random() * 40, hgt / 2 - 4, -430 - Math.random() * 120); d.scale.set(wd, hgt, wd * (0.7 + Math.random() * 0.5)); d.rotation.set(0, Math.random() * 3, 0); d.updateMatrix(); im.setMatrixAt(i, d.matrix); } im.receiveShadow = true; B.add(im); }
+      {
+        for (let detail = 1; detail <= desertBudget.ridgeDetail; detail++) {
+          const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position, colors = [];
+          for (let i = 0; i < p.count; i++) {
+            const x = p.getX(i), y = p.getY(i), z = p.getZ(i), h = (y + 1) / 2;
+            const cut = N.fbm(x * 3 + 14, z * 3 + y + 8, 2), ledge = 0.08 * Math.sin(h * 25 + cut * 3);
+            const width = (1.28 - h * 0.55) * (0.82 + cut * 0.38 + ledge);
+            p.setXYZ(i, x * width + h * 0.18, (h + cut * h * 0.16) / 1.08, z * width);
+            const band = 0.88 + 0.11 * Math.cos(h * 18 + cut) + cut * 0.13;
+            colors.push(band, band * (0.93 + h * 0.06), band * (0.91 + h * 0.08));
+          }
+          g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); g.deleteAttribute('normal'); g.deleteAttribute('uv');
+          const smooth = mergeVertices(g); smooth.computeVertexNormals(); g.dispose(); ridgeGeometries[detail] = smooth;
+        }
+        const n = 9, im = new THREE.InstancedMesh(ridgeGeometries[Q.ridgeDetail], mat({ color: 0xa58062, roughness: 1, vertexColors: true }), n), d = new THREE.Object3D();
+        for (let i = 0; i < n; i++) {
+          const x = -520 + i * 130 + rand() * 40, z = -475 - rand() * 100, h = 52 + rand() * 65, w = 86 + rand() * 63;
+          d.position.set(x, heightAt(origin.x + x, origin.z + z) - 18, z);
+          d.scale.set(w, h, w * (0.64 + rand() * 0.35)); d.rotation.y = rand() * Math.PI * 2; d.updateMatrix(); im.setMatrixAt(i, d.matrix);
+        }
+        im.receiveShadow = true; B.add(im); W.ridge = im;
+      }
       flag(18, 14, 0xb3261e);
     } else {
       // قاعدتنا: مهبط مروحيات، خزان ماء، سارية علم، ونخيل أكثر
@@ -370,5 +470,6 @@ export function buildWorld(scene, renderer, T, Q) {
   const tel = W.truck(MT.tan, 'erector'); tel.position.set(0, 0, 5.1); scene.add(tel); W.tel = tel;
   const table = cyl(1.6, 1.9, 0.5, MT.dark, 20); table.position.set(0, 0.34, 0); scene.add(table);
   W.padY = 0.6;
+  W.setDesertQuality();
   return W;
 }

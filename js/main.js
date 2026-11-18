@@ -1,8 +1,8 @@
 // صقر الصحراء — قيادة دفاع جوي: رادار حي، IFF، اشتباك متعدد بتوجيه تلقائي، ضرر موضعي
 import * as THREE from 'three';
-import { buildTextures } from './tex.js?v=16';
-import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=16';
-import { buildFX } from './fx.js?v=16';
+import { buildTextures } from './tex.js?v=17';
+import { buildWorld, heightAt, HOME, ENEMY } from './world.js?v=17';
+import { buildFX } from './fx.js?v=17';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const M = THREE.MathUtils, V3 = THREE.Vector3, $ = (id) => document.getElementById(id);
@@ -11,18 +11,18 @@ const store = { get(k, d) { try { return localStorage.getItem('sd3_' + k) ?? d; 
 
 // ---------- الجودة
 const TIERS = {
-  low: { prMax: 1, shadows: false, bloom: false, blur: false, heat: false, flare: false, rate: 0.4 },
-  med: { prMax: 1.25, shadows: true, bloom: true, blur: false, heat: false, flare: true, rate: 0.65 },
-  high: { prMax: 2, shadows: true, bloom: true, blur: true, heat: true, flare: true, rate: 1 },
+  low: { prMax: 1, shadows: false, bloom: false, blur: false, heat: false, flare: false, rate: 0.4, terrainSeg: 84, rocks: 76, shrubs: 22, ridgeDetail: 1, sandAniso: 2 },
+  med: { prMax: 1.25, shadows: true, bloom: true, blur: false, heat: false, flare: true, rate: 0.65, terrainSeg: 144, rocks: 160, shrubs: 64, ridgeDetail: 1, sandAniso: 4 },
+  high: { prMax: 2, shadows: true, bloom: true, blur: true, heat: true, flare: true, rate: 1, terrainSeg: 200, rocks: 260, shrubs: 120, ridgeDetail: 2, sandAniso: 8 },
 };
-const Q = { post: true, shadowMap: 1024, terrainSeg: 200, rocks: 220, palms: 18, msaa: 0, auto: true, tier: 'med', pr: 1 };
+const Q = { post: true, shadowMap: 1024, palms: 18, msaa: 0, auto: true, tier: 'med', pr: 1, ...TIERS.med };
 let qPref = store.get('q', 'auto');
 
 const canvas = $('c'), view = $('view');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', stencil: false });
 renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(50, 1.6, 0.5, 80000); scene.add(camera);
-const T = buildTextures(1), W = buildWorld(scene, renderer, T, Q), F = buildFX(scene, renderer, camera, T, W, Q);
+const T = buildTextures(1), W = buildWorld(scene, renderer, T, Q, TIERS.high), F = buildFX(scene, renderer, camera, T, W, Q);
 W.enemy.group.visible = false; scene.remove(W.tel);
 Object.values(W.home.sys).forEach(o => o.visible = false);   // نعيد توزيع المنظومات كبطاريات
 { const sc = W.sun.shadow.camera; sc.left = sc.bottom = -270; sc.right = sc.top = 270; sc.updateProjectionMatrix(); }
@@ -58,7 +58,7 @@ let VW = 1, VH = 1;
 function resize() { VW = view.clientWidth; VH = view.clientHeight; renderer.setPixelRatio(Q.pr); renderer.setSize(VW, VH, false); camera.aspect = VW / VH; camera.updateProjectionMatrix(); F.resize(VW, VH, Q.pr); radarResize(); }
 function applyTier(name) {
   Q.tier = name; Object.assign(Q, TIERS[name]); F.rate = Q.rate; Q.pr = Math.min(devicePixelRatio || 1, Q.prMax);
-  renderer.shadowMap.enabled = Q.shadows; W.sun.castShadow = Q.shadows; scene.traverse(o => { if (o.material) [].concat(o.material).forEach(m => m.needsUpdate = true); });
+  W.setDesertQuality(); renderer.shadowMap.enabled = Q.shadows; W.sun.castShadow = Q.shadows; scene.traverse(o => { if (o.material) [].concat(o.material).forEach(m => m.needsUpdate = true); });
   resize(); shadowOnce(); $('qv').textContent = (Q.auto ? 'تلقائي: ' : '') + { low: 'منخفضة', med: 'متوسطة', high: 'عالية' }[name];
 }
 function setQuality(pref) { qPref = pref; store.set('q', pref); Q.auto = pref === 'auto'; applyTier(Q.auto ? 'med' : pref); }
