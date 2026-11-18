@@ -120,7 +120,7 @@ function avenueTraffic(capacity) {
   };
   panel(4.6,.85,2,0,.63,0,0xe5e4da); panel(2.35,.72,1.65,-.18,1.4,0,0x788e99);
   panel(3.5,.35,1.9,0,.25,0,0x393c3e);
-  panel(4.25,.035,1.98,0,.065,0,0x373b3c);
+
   const geo=mergeGeometries(parts,false); parts.forEach(g=>g.dispose());
   const cars=new THREE.InstancedMesh(geo,new THREE.MeshLambertMaterial({vertexColors:true}),capacity);
   const pose=new THREE.Object3D(), lanes=[];
@@ -234,7 +234,7 @@ function avenueGeometry(low) {
   for(let i=0;i<52;i++){
     const rear=i%2===1, n=Math.floor(i/2), x=-760+n*61+(rear?26:0), z=roadZ(x)-(rear?148:86)-(i%4)*5;
     const w=24+(i*7%17),d=15+(i*3%11),h=(rear?17:8)+(i*11%17), y=heightAt(x,z)-1.5;
-    footing(x,z,w+9,d+8,0x79756a,0xb9ac95,.43,heightAt);
+    if(!low) footing(x,z,w+9,d+8,0x79756a,0xb9ac95,.43,heightAt);
     block(x,y,z,w+9,2.15,d+8,0xc9bba3);
     block(x,y,z,w,h,d,[0xc3b49d,0xa7b4b5,0xcfbfa5,0xa5a7a2][i%4]);
     block(x,y+h,z,w+1,.8,d+1,0xdcd0b9);
@@ -256,11 +256,11 @@ function avenueGeometry(low) {
 
 
 // أفق الرياض، مجسمات زخرفية بتوزيع خيالي خارج الساحات.
-function skylineGeometry(bands) {
+function skylineGeometry(bands,low) {
   const parts = [], tone = new THREE.Color();
   let ox = 0, oy = 0, oz = 0;
   const site = (x,z,w,d) => {
-    ox=x; oz=z; oy=heightAt(x,z)-1;
+    ox=x; oz=z; oy=heightAt(x,z)-1; if(low)return;
     // ظل تلامس مخبوز فوق ساحة البرج، يتلاشى إلى لون الرصف عند الحافة.
     const ring=[[-1,1],[1,1],[1,-1],[-1,-1]], pts=[], shade=[];
     for(let i=0;i<4;i++) for(const [corner,pad] of [[i,3],[(i+1)%4,3],[(i+1)%4,0],[i,3],[(i+1)%4,0],[i,0]]){
@@ -514,10 +514,11 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
     }
     const low = Q.tier === 'low';
     if(low !== avenueLow) { const old=avenue.geometry; avenue.geometry=avenueGeometry(low); old.dispose(); avenueLow=low; }
+    skyline.material = low ? cityMaterial : glass;
     traffic.count = Q.traffic;
     streetPalms.count = Math.min(Q.avenuePalms,streetPalms.instanceMatrix.count);
     if (skylineBands !== Q.landmarkBands) {
-      const previous = skyline.geometry; skyline.geometry = skylineGeometry(Q.landmarkBands); previous.dispose(); skylineBands = Q.landmarkBands;
+      const previous = skyline.geometry; skyline.geometry = skylineGeometry(Q.landmarkBands,low); previous.dispose(); skylineBands = Q.landmarkBands;
     }
   };
   let skylineBands = Q.landmarkBands;
@@ -540,7 +541,7 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
       .replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\nmetalnessFactor*=vGlazing;');
   };
   glass.roughness=.33; glass.metalness=.48; glass.userData.envK=1.15;
-  const skyline = new THREE.Mesh(skylineGeometry(skylineBands),glass);
+  const skyline = new THREE.Mesh(skylineGeometry(skylineBands,avenueLow),avenueLow ? cityMaterial : glass);
   skyline.name = 'Riyadh skyline'; scene.add(skyline);
 
   // ---------- مجسمات
