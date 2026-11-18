@@ -138,7 +138,7 @@ function avenueTraffic(capacity) {
 }
 
 
-function avenueGeometry() {
+function avenueGeometry(low) {
   const positions = [], colors = [], glow = [], tint = new THREE.Color();
   const face = (a,b,c,d,color,lit=0) => {
     tint.set(color);
@@ -157,27 +157,29 @@ function avenueGeometry() {
   };
   const strip = (x,end,from,to,above,color) => face(point(x,to,above),point(end,to,above),point(end,from,above),point(x,from,above),color);
   // ثلاث حارات في كل اتجاه، فاصل وسطي، أرصفة وطريقا خدمة.
-  for(let x=-1728;x<1728;x+=24) {
+  for(let x=-1728;x<1728;) {
+    const step=low && Math.abs(x)>600 ? 72 : 24, end=x+step;
     if (x>=-816 && x<816) {
-      strip(x,x+24,-191,-28,.3,0xb9ac95);
-      strip(x,x+24,-120,-112,.8,0x656766);
+      strip(x,end,-191,-28,.3,0xb9ac95);
+      strip(x,end,-120,-112,.8,0x656766);
       if(x%120===0)strip(x,x+9,-191,-25,.92,0x656766);
-      strip(x,x+24,-32,-27,1,0xd2c6ae);
+      strip(x,end,-32,-27,1,0xd2c6ae);
     }
-    strip(x,x+24,-29,29,.9,0xcfc1a4);
+    strip(x,end,-29,29,.9,0xcfc1a4);
     for(const side of [-1,1]) {
-      const lane=(from,to,h,color,start=x,end=x+24)=>strip(start,end,side<0?-to:from,side<0?-from:to,h,color);
+      const lane=(from,to,h,color,start=x,finish=end)=>strip(start,finish,side<0?-to:from,side<0?-from:to,h,color);
       lane(2,15,1.12,0x424a50); lane(19,26,1.12,0x51595d);
       lane(1.9,2.28,1.35,0xd9ae53); lane(14.45,14.85,1.35,0xd8d4bf);
       for(const offset of [6.2,10.4,22.5]) lane(offset,offset+.36,1.4,0xf3e8ca,x+3,x+12);
     }
-    strip(x,x+24,-1.55,1.55,1.18,0x857e62);
+    strip(x,end,-1.55,1.55,1.18,0x857e62);
     if(x%72===0){
       const [px,y,pz]=point(x,0,1.15);
       block(px,y,pz,.55,8,.55,0x85918f);
       block(px,y+7.7,pz,.5,.4,6.6,0x9ca6a1);
       for(const side of [-1,1])block(px,y+7.7,pz+side*3.45,1.5,.35,1,0xffdf97,2.5);
     }
+    x=end;
   }
   for(const x of [-330,-110,225,470]){
     const z=roadZ(x), y=heightAt(x,z);
@@ -207,15 +209,15 @@ function avenueGeometry() {
     block(x,y,z,w+9,2.15,d+8,0xc9bba3);
     block(x,y,z,w,h,d,[0xc3b49d,0xa7b4b5,0xcfbfa5,0xa5a7a2][i%4]);
     block(x,y+h,z,w+1,.8,d+1,0xdcd0b9);
-    for(let k=0;k<3;k++){
+    for(let k=0;k<(low?1:3);k++){
       const px=x-w*.36+k*6.2, pz=z+d/2+6.7, py=heightAt(px,pz)+.78;
       block(px,py,pz,2,.82,4.2,[0xb9c1bc,0x626d72,0xe2dfcf][(i+k)%3]);
       block(px,py+.82,pz,1.7,.6,2.25,0x71838a);
     }
     block(x+w*.17,y+h+.8,z-2,w*.26,1.8,d*.36,0xa29b8f);
-    for(let j=3;j<h-1;j+=3.6){
+    for(let j=3;j<h-1;j+=low?7.2:3.6){
       block(x,y+j,z+d/2+.09,w*.92,1.45,.35,0x617f89);
-      if((i+Math.floor(j))%3===0)block(x-w*.21,y+j,z+d/2+.31,w*.25,1.1,.17,0xe0bf84,.95);
+      if(!low && (i+Math.floor(j))%3===0)block(x-w*.21,y+j,z+d/2+.31,w*.25,1.1,.17,0xe0bf84,.95);
     }
   }
   const g=new THREE.BufferGeometry();
@@ -466,6 +468,8 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
       layer.mesh.count = count * layer.pieces;
       layer.mesh.computeBoundingSphere();
     }
+    const low = Q.tier === 'low';
+    if(low !== avenueLow) { const old=avenue.geometry; avenue.geometry=avenueGeometry(low); old.dispose(); avenueLow=low; }
     traffic.count = Q.traffic;
     streetPalms.count = Math.min(Q.avenuePalms,streetPalms.instanceMatrix.count);
     if (skylineBands !== Q.landmarkBands) {
@@ -481,7 +485,8 @@ export function buildWorld(scene, renderer, T, Q, desertBudget = Q) {
   };
   const traffic = avenueTraffic(desertBudget.traffic); traffic.name='Avenue traffic'; scene.add(traffic);
   const streetPalms = roadsidePalms(desertBudget.avenuePalms); scene.add(streetPalms);
-  const avenue = new THREE.Mesh(avenueGeometry(),cityMaterial); avenue.name='City avenue'; scene.add(avenue);
+  let avenueLow = Q.tier === 'low';
+  const avenue = new THREE.Mesh(avenueGeometry(avenueLow),cityMaterial); avenue.name='City avenue'; scene.add(avenue);
   const skyline = new THREE.Mesh(skylineGeometry(skylineBands),cityMaterial);
   skyline.name = 'Riyadh skyline'; scene.add(skyline);
 
